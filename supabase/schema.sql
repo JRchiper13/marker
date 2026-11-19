@@ -41,10 +41,21 @@ create table if not exists public.productos (
   constraint productos_sucursal_codigo_unico unique (sucursal_id, codigo_barras)
 );
 
--- Índices para búsqueda rápida por nombre, código y categoría
 create index if not exists idx_productos_sucursal on public.productos (sucursal_id);
 create index if not exists idx_productos_categoria on public.productos (categoria);
 create index if not exists idx_productos_codigo on public.productos (codigo_barras);
+
+-- 3. Tabla de ventas (Punto de venta)
+create table if not exists public.ventas (
+  id uuid primary key default gen_random_uuid(),
+  fecha timestamptz not null default now(),
+  sucursal_id text not null references public.sucursales(id) on update cascade,
+  items jsonb not null,
+  total numeric(12, 2) not null check (total >= 0),
+  metodo_pago text not null
+);
+
+create index if not exists idx_ventas_sucursal_fecha on public.ventas (sucursal_id, fecha desc);
 
 -- Trigger para actualizar automáticamente actualizado_fecha
 create or replace function public.actualizar_timestamp_producto()
@@ -66,6 +77,7 @@ execute function public.actualizar_timestamp_producto();
 -- Políticas RLS básicas (ajustar si agregas autenticación de usuarios en el futuro)
 alter table public.sucursales enable row level security;
 alter table public.productos enable row level security;
+alter table public.ventas enable row level security;
 
 drop policy if exists "Acceso completo sucursales" on public.sucursales;
 create policy "Acceso completo sucursales"
@@ -76,5 +88,11 @@ create policy "Acceso completo sucursales"
 drop policy if exists "Acceso completo productos" on public.productos;
 create policy "Acceso completo productos"
   on public.productos for all
+  using (true)
+  with check (true);
+
+drop policy if exists "Acceso completo ventas" on public.ventas;
+create policy "Acceso completo ventas"
+  on public.ventas for all
   using (true)
   with check (true);

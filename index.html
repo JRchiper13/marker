@@ -1344,7 +1344,6 @@
               </svg>
               <span>Ventas</span>
             </span>
-            <span class="nav-item-hint">Maqueta</span>
           </button>
 
           <button type="button" class="nav-item" data-section="inventario">
@@ -1369,7 +1368,6 @@
               </svg>
               <span>Sucursales</span>
             </span>
-            <span class="nav-item-hint">Maqueta</span>
           </button>
 
           <button type="button" class="nav-item" data-section="reportes">
@@ -1381,7 +1379,6 @@
               </svg>
               <span>Reportes</span>
             </span>
-            <span class="nav-item-hint">Maqueta</span>
           </button>
         </nav>
 
@@ -1910,12 +1907,12 @@
           </section>
 
           <!-- =================================================================
-               SECCIÓN 2: VENTAS (MAQUETA VISUAL PUNTO DE VENTA)
+               SECCIÓN 2: VENTAS (PUNTO DE VENTA ACTIVO)
                ================================================================= -->
-          <section id="seccion-ventas" class="view-section" aria-label="Punto de venta (maqueta)">
-            <div class="mockup-banner">
-              <span><strong>Maqueta visual de Punto de Venta:</strong> Aquí podrás cobrar rápido con lector de código de barras y descontar stock automáticamente al conectar la base de datos.</span>
-              <span>Próximamente</span>
+          <section id="seccion-ventas" class="view-section" aria-label="Punto de venta">
+            <div id="posToast" class="toast-banner" role="status" aria-live="polite">
+              <span id="posToastMessage"></span>
+              <button type="button" id="btnCerrarPosToast" class="btn btn-secondary btn-sm">Cerrar</button>
             </div>
 
             <div class="pos-layout">
@@ -1923,7 +1920,7 @@
                 <div class="panel-header">
                   <div>
                     <h2 class="panel-title">Catálogo rápido para venta</h2>
-                    <p class="panel-subtitle">Haz clic en un producto para probar la simulación visual del carrito.</p>
+                    <p class="panel-subtitle">Haz clic en un producto o escanea su código de barras y presiona Enter.</p>
                   </div>
                 </div>
                 <div class="panel-body">
@@ -1936,7 +1933,8 @@
                       type="search"
                       id="posBuscador"
                       class="input-control"
-                      placeholder="Buscar producto o escanear código para agregar..."
+                      placeholder="Buscar producto o escanear código + Enter..."
+                      autocomplete="off"
                     />
                   </div>
 
@@ -1950,6 +1948,9 @@
                     <h2 class="panel-title">Carrito de venta actual</h2>
                     <p id="posSucursalNombre" class="panel-subtitle">Sucursal principal</p>
                   </div>
+                  <button type="button" id="btnVaciarCarrito" class="btn btn-secondary btn-sm" style="display: none">
+                    Vaciar
+                  </button>
                 </div>
                 <div class="panel-body">
                   <div id="posCarritoLista" class="pos-cart-list"></div>
@@ -1978,12 +1979,12 @@
                   <div class="form-actions">
                     <button
                       type="button"
+                      id="btnCobrarVenta"
                       class="btn btn-primary"
                       style="width: 100%"
                       disabled
-                      title="El cobro definitivo y descuento de stock estará disponible en la siguiente etapa"
                     >
-                      Cobrar (Próximamente)
+                      Cobrar y registrar venta
                     </button>
                   </div>
                 </div>
@@ -2016,12 +2017,12 @@
           </section>
 
           <!-- =================================================================
-               SECCIÓN 4: SUCURSALES (MAQUETA VISUAL)
+               SECCIÓN 4: SUCURSALES
                ================================================================= -->
-          <section id="seccion-sucursales" class="view-section" aria-label="Sucursales (maqueta)">
-            <div class="mockup-banner">
-              <span><strong>Maqueta visual de Sucursales:</strong> Estructura lista para administrar múltiples tiendas desde una sola cuenta.</span>
-              <span>Próximamente</span>
+          <section id="seccion-sucursales" class="view-section" aria-label="Sucursales">
+            <div id="sucursalToast" class="toast-banner" role="status" aria-live="polite">
+              <span id="sucursalToastMessage"></span>
+              <button type="button" id="btnCerrarSucursalToast" class="btn btn-secondary btn-sm">Cerrar</button>
             </div>
 
             <div class="panel">
@@ -2049,87 +2050,62 @@
             <div class="panel">
               <div class="panel-header">
                 <div>
-                  <h2 class="panel-title">Agregar nueva sucursal (Maqueta)</h2>
-                  <p class="panel-subtitle">El guardado de nuevas sucursales se habilitará al conectar la base de datos.</p>
+                  <h2 class="panel-title">Agregar nueva sucursal</h2>
+                  <p class="panel-subtitle">Registra otra tienda para administrar su propio catálogo y ventas.</p>
                 </div>
               </div>
               <div class="panel-body">
-                <div class="form-grid">
-                  <div class="field-group">
-                    <label for="mockSucursalNombre" class="field-label">Nombre de sucursal</label>
-                    <input type="text" id="mockSucursalNombre" class="input-control" placeholder="Ej. Sucursal Sopocachi" />
+                <form id="formSucursal" novalidate>
+                  <div class="form-grid">
+                    <div class="field-group">
+                      <label for="mockSucursalNombre" class="field-label">Nombre de sucursal <span class="required-mark">*</span></label>
+                      <input type="text" id="mockSucursalNombre" class="input-control" placeholder="Ej. Sucursal Sopocachi" required />
+                    </div>
+                    <div class="field-group">
+                      <label for="mockSucursalEncargado" class="field-label">Encargado</label>
+                      <input type="text" id="mockSucursalEncargado" class="input-control" placeholder="Ej. Carlos Mamani" />
+                    </div>
+                    <div class="field-group is-full">
+                      <label for="mockSucursalDireccion" class="field-label">Dirección</label>
+                      <input type="text" id="mockSucursalDireccion" class="input-control" placeholder="Ej. Av. 20 de Octubre #2410, La Paz" />
+                    </div>
                   </div>
-                  <div class="field-group">
-                    <label for="mockSucursalEncargado" class="field-label">Encargado</label>
-                    <input type="text" id="mockSucursalEncargado" class="input-control" placeholder="Ej. Carlos Mamani" />
+                  <div class="form-actions">
+                    <button type="submit" id="btnGuardarSucursal" class="btn btn-primary">
+                      Guardar sucursal
+                    </button>
                   </div>
-                  <div class="field-group is-full">
-                    <label for="mockSucursalDireccion" class="field-label">Dirección</label>
-                    <input type="text" id="mockSucursalDireccion" class="input-control" placeholder="Ej. Av. 20 de Octubre #2410, La Paz" />
-                  </div>
-                </div>
-                <div class="form-actions">
-                  <button type="button" class="btn btn-primary" disabled>
-                    Guardar sucursal (Próximamente)
-                  </button>
-                </div>
+                </form>
               </div>
             </div>
           </section>
 
           <!-- =================================================================
-               SECCIÓN 5: REPORTES (MAQUETA VISUAL)
+               SECCIÓN 5: REPORTES
                ================================================================= -->
-          <section id="seccion-reportes" class="view-section" aria-label="Reportes (maqueta)">
-            <div class="mockup-banner">
-              <span><strong>Maqueta visual de Reportes:</strong> Resumen diario de ventas y alertas operativas de la tienda.</span>
-              <span>Próximamente</span>
-            </div>
-
+          <section id="seccion-reportes" class="view-section" aria-label="Reportes">
             <div class="reports-grid">
               <article class="panel">
                 <div class="panel-header">
                   <div>
-                    <h2 class="panel-title">Ventas del día (Maqueta)</h2>
-                    <p class="panel-subtitle">Resumen referencial en Bs</p>
+                    <h2 class="panel-title">Ventas del día</h2>
+                    <p class="panel-subtitle">Resumen acumulado en Bs</p>
                   </div>
                 </div>
                 <div class="panel-body">
-                  <ul class="report-list">
-                    <li>
-                      <span>Efectivo</span>
-                      <strong class="font-mono-num">Bs 1.420,00</strong>
-                    </li>
-                    <li>
-                      <span>Pagos con QR</span>
-                      <strong class="font-mono-num">Bs 865,50</strong>
-                    </li>
-                    <li>
-                      <span>Tarjeta / Transferencia</span>
-                      <strong class="font-mono-num">Bs 310,00</strong>
-                    </li>
-                    <li>
-                      <strong>Total proyectado</strong>
-                      <strong class="font-mono-num" style="color: var(--green-primary)">Bs 2.595,50</strong>
-                    </li>
-                  </ul>
+                  <ul id="reporteVentasDia" class="report-list"></ul>
                 </div>
               </article>
 
               <article class="panel">
                 <div class="panel-header">
                   <div>
-                    <h2 class="panel-title">Más vendidos (Maqueta)</h2>
-                    <p class="panel-subtitle">Ranking semanal simulado</p>
+                    <h2 class="panel-title">Productos más vendidos</h2>
+                    <p class="panel-subtitle">Unidades vendidas registradas</p>
                   </div>
                 </div>
                 <div class="panel-body">
-                  <ul class="report-list">
-                    <li><span>1. Leche PIL 946 ml</span><strong class="tabular-nums">48 u.</strong></li>
-                    <li><span>2. Pan Marraqueta</span><strong class="tabular-nums">120 u.</strong></li>
-                    <li><span>3. Coca-Cola 2 Litros</span><strong class="tabular-nums">34 u.</strong></li>
-                    <li><span>4. Aceite Fino 900 ml</span><strong class="tabular-nums">19 u.</strong></li>
-                  </ul>
+                  <ul id="reporteMasVendidos" class="report-list"></ul>
                 </div>
               </article>
 
@@ -2137,7 +2113,7 @@
                 <div class="panel-header">
                   <div>
                     <h2 class="panel-title">Stock crítico actual</h2>
-                    <p class="panel-subtitle">Calculado con tus productos en memoria</p>
+                    <p class="panel-subtitle">Productos por debajo del mínimo</p>
                   </div>
                 </div>
                 <div class="panel-body">
@@ -2285,6 +2261,8 @@
          ======================================================================= */
 
       const CLAVE_LOCAL_PRODUCTOS = "minimarket_bolivia_productos_v1";
+      const CLAVE_LOCAL_VENTAS = "minimarket_bolivia_ventas_v1";
+      const CLAVE_LOCAL_SUCURSALES = "minimarket_bolivia_sucursales_v1";
       let usandoRespaldoLocal = false;
 
       const sucursalesPorDefecto = [
@@ -2383,14 +2361,12 @@
       const baseDatosMemoria = {
         sucursales: [...sucursalesPorDefecto],
         productos: [],
-        // Estructura preparada para el módulo de ventas futuro:
-        // { id, fecha, sucursalId, items: [{ productoId, cantidad, precioUnitario }], total, metodoPago }
         ventas: [],
       };
 
-      function leerProductosLocales() {
+      function leerListaLocal(clave, porDefecto) {
         try {
-          const guardado = localStorage.getItem(CLAVE_LOCAL_PRODUCTOS);
+          const guardado = localStorage.getItem(clave);
           if (guardado) {
             const parsed = JSON.parse(guardado);
             if (Array.isArray(parsed)) return parsed;
@@ -2398,60 +2374,96 @@
         } catch (_err) {
           // Ignorar errores de almacenamiento
         }
-        return [...productosInicialesDemo];
+        return [...porDefecto];
+      }
+
+      function guardarListaLocal(clave, lista) {
+        try {
+          localStorage.setItem(clave, JSON.stringify(lista));
+        } catch (_err) {
+          // Ignorar errores de cuota
+        }
+      }
+
+      function leerProductosLocales() {
+        return leerListaLocal(CLAVE_LOCAL_PRODUCTOS, productosInicialesDemo);
       }
 
       function guardarProductosLocales(lista) {
+        guardarListaLocal(CLAVE_LOCAL_PRODUCTOS, lista);
+      }
+
+      async function leerJsonSeguro(resp) {
+        const contentType = resp.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) {
+          return { esJson: false, data: null };
+        }
         try {
-          localStorage.setItem(CLAVE_LOCAL_PRODUCTOS, JSON.stringify(lista));
+          const data = await resp.json();
+          return { esJson: true, data };
         } catch (_err) {
-          // Ignorar errores de cuota en localStorage
+          return { esJson: false, data: null };
         }
       }
 
       async function sincronizarDesdeSupabase() {
         try {
-          const [respSuc, respProd] = await Promise.all([
+          const [respSuc, respProd, respVentas] = await Promise.all([
             fetch("/api/sucursales"),
             fetch("/api/productos"),
+            fetch("/api/ventas"),
           ]);
 
-          if (respSuc.status === 503 || respProd.status === 503) {
+          const parsedSuc = await leerJsonSeguro(respSuc);
+          const parsedProd = await leerJsonSeguro(respProd);
+          const parsedVentas = await leerJsonSeguro(respVentas);
+
+          // Si el servidor responde HTML (p. ej. vista estática sin backend) o 503 sin credenciales,
+          // usamos respaldo en localStorage sin mostrar error.
+          if (
+            !parsedProd.esJson ||
+            respSuc.status === 503 ||
+            respProd.status === 503
+          ) {
             usandoRespaldoLocal = true;
-            baseDatosMemoria.sucursales = [...sucursalesPorDefecto];
+            baseDatosMemoria.sucursales = leerListaLocal(CLAVE_LOCAL_SUCURSALES, sucursalesPorDefecto);
             baseDatosMemoria.productos = leerProductosLocales();
+            baseDatosMemoria.ventas = leerListaLocal(CLAVE_LOCAL_VENTAS, []);
+            actualizarSelectoresSucursal();
             return;
           }
 
-          if (respSuc.ok) {
-            const sucursales = await respSuc.json();
-            if (Array.isArray(sucursales) && sucursales.length > 0) {
-              baseDatosMemoria.sucursales = sucursales;
-            }
+          if (respSuc.ok && parsedSuc.esJson && Array.isArray(parsedSuc.data) && parsedSuc.data.length > 0) {
+            baseDatosMemoria.sucursales = parsedSuc.data;
           }
 
           if (!respProd.ok) {
-            const errData = await respProd.json().catch(() => ({}));
-            throw new Error(errData.error || "No se pudo cargar el catálogo desde Supabase.");
+            throw new Error(
+              (parsedProd.data && parsedProd.data.error) ||
+                "No se pudo cargar el catálogo desde Supabase."
+            );
           }
 
-          const productos = await respProd.json();
           usandoRespaldoLocal = false;
-          baseDatosMemoria.productos = Array.isArray(productos) ? productos : [];
+          baseDatosMemoria.productos = Array.isArray(parsedProd.data) ? parsedProd.data : [];
+          baseDatosMemoria.ventas =
+            respVentas.ok && parsedVentas.esJson && Array.isArray(parsedVentas.data)
+              ? parsedVentas.data
+              : [];
           actualizarSelectoresSucursal();
         } catch (error) {
-          if (window.location.protocol === "file:") {
-            usandoRespaldoLocal = true;
-            baseDatosMemoria.productos = leerProductosLocales();
-            return;
-          }
-          console.error("Error sincronizando con Supabase:", error);
           usandoRespaldoLocal = true;
+          baseDatosMemoria.sucursales = leerListaLocal(CLAVE_LOCAL_SUCURSALES, sucursalesPorDefecto);
           baseDatosMemoria.productos = leerProductosLocales();
-          mostrarConfirmacion(
-            error.message || "No se pudo conectar con Supabase; usando almacenamiento local.",
-            true
-          );
+          baseDatosMemoria.ventas = leerListaLocal(CLAVE_LOCAL_VENTAS, []);
+          actualizarSelectoresSucursal();
+
+          if (window.location.protocol !== "file:") {
+            mostrarConfirmacion(
+              error.message || "No se pudo conectar con Supabase; usando almacenamiento local.",
+              true
+            );
+          }
         }
       }
 
@@ -2517,11 +2529,11 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(datosProducto),
           });
-          const body = await resp.json().catch(() => ({}));
-          if (resp.status === 503 && body.code === "SUPABASE_NOT_CONFIGURED") {
+          const { esJson, data: body } = await leerJsonSeguro(resp);
+          if (!esJson || (resp.status === 503 && body && body.code === "SUPABASE_NOT_CONFIGURED")) {
             usandoRespaldoLocal = true;
           } else if (!resp.ok) {
-            throw new Error(body.error || "No se pudo guardar el producto en Supabase.");
+            throw new Error((body && body.error) || "No se pudo guardar el producto en Supabase.");
           } else {
             baseDatosMemoria.productos.unshift(body);
             return body;
@@ -2547,11 +2559,11 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(datosActualizados),
           });
-          const body = await resp.json().catch(() => ({}));
-          if (resp.status === 503 && body.code === "SUPABASE_NOT_CONFIGURED") {
+          const { esJson, data: body } = await leerJsonSeguro(resp);
+          if (!esJson || (resp.status === 503 && body && body.code === "SUPABASE_NOT_CONFIGURED")) {
             usandoRespaldoLocal = true;
           } else if (!resp.ok) {
-            throw new Error(body.error || "No se pudo actualizar el producto en Supabase.");
+            throw new Error((body && body.error) || "No se pudo actualizar el producto en Supabase.");
           } else {
             const indice = baseDatosMemoria.productos.findIndex((p) => p.id === id);
             if (indice !== -1) {
@@ -2581,11 +2593,11 @@
           const resp = await fetch(`/api/productos/${encodeURIComponent(id)}`, {
             method: "DELETE",
           });
-          const body = await resp.json().catch(() => ({}));
-          if (resp.status === 503 && body.code === "SUPABASE_NOT_CONFIGURED") {
+          const { esJson, data: body } = await leerJsonSeguro(resp);
+          if (!esJson || (resp.status === 503 && body && body.code === "SUPABASE_NOT_CONFIGURED")) {
             usandoRespaldoLocal = true;
           } else if (!resp.ok) {
-            throw new Error(body.error || "No se pudo eliminar el producto en Supabase.");
+            throw new Error((body && body.error) || "No se pudo eliminar el producto en Supabase.");
           } else {
             const indice = baseDatosMemoria.productos.findIndex((p) => p.id === id);
             if (indice !== -1) baseDatosMemoria.productos.splice(indice, 1);
@@ -2598,6 +2610,104 @@
         baseDatosMemoria.productos.splice(indice, 1);
         guardarProductosLocales(baseDatosMemoria.productos);
         return true;
+      }
+
+      async function registrarVenta(sucursalId, itemsCarrito, metodoPago) {
+        if (!usandoRespaldoLocal) {
+          const resp = await fetch("/api/ventas", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sucursalId,
+              metodoPago,
+              items: itemsCarrito.map((i) => ({
+                productoId: i.productoId,
+                nombre: i.nombre,
+                cantidad: i.cantidad,
+                precioUnitario: i.precioUnitario,
+              })),
+            }),
+          });
+          const { esJson, data: body } = await leerJsonSeguro(resp);
+          if (!esJson || (resp.status === 503 && body && body.code === "SUPABASE_NOT_CONFIGURED")) {
+            usandoRespaldoLocal = true;
+          } else if (!resp.ok) {
+            throw new Error((body && body.error) || "No se pudo registrar la venta.");
+          } else {
+            if (Array.isArray(body.productosActualizados)) {
+              body.productosActualizados.forEach((actualizado) => {
+                const idx = baseDatosMemoria.productos.findIndex((p) => p.id === actualizado.id);
+                if (idx !== -1) baseDatosMemoria.productos[idx] = actualizado;
+              });
+            }
+            if (body.venta) {
+              baseDatosMemoria.ventas.unshift(body.venta);
+            }
+            return body.venta;
+          }
+        }
+
+        // Modo respaldo localStorage: validar y descontar stock
+        for (const item of itemsCarrito) {
+          const prod = baseDatosMemoria.productos.find((p) => p.id === item.productoId);
+          if (!prod) throw new Error(`El producto "${item.nombre}" ya no existe.`);
+          if (prod.stockActual < item.cantidad) {
+            throw new Error(`Stock insuficiente para "${prod.nombre}". Disponible: ${prod.stockActual}.`);
+          }
+        }
+
+        itemsCarrito.forEach((item) => {
+          const prod = baseDatosMemoria.productos.find((p) => p.id === item.productoId);
+          if (prod) {
+            prod.stockActual -= item.cantidad;
+            prod.actualizadoFecha = new Date().toISOString();
+          }
+        });
+        guardarProductosLocales(baseDatosMemoria.productos);
+
+        const nuevaVenta = crearEstructuraVenta(sucursalId, itemsCarrito, metodoPago);
+        nuevaVenta.items = itemsCarrito.map((i) => ({ ...i }));
+        baseDatosMemoria.ventas.unshift(nuevaVenta);
+        guardarListaLocal(CLAVE_LOCAL_VENTAS, baseDatosMemoria.ventas);
+        return nuevaVenta;
+      }
+
+      async function guardarSucursal(datosSucursal) {
+        if (!usandoRespaldoLocal) {
+          const resp = await fetch("/api/sucursales", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(datosSucursal),
+          });
+          const { esJson, data: body } = await leerJsonSeguro(resp);
+          if (!esJson || (resp.status === 503 && body && body.code === "SUPABASE_NOT_CONFIGURED")) {
+            usandoRespaldoLocal = true;
+          } else if (!resp.ok) {
+            throw new Error((body && body.error) || "No se pudo guardar la sucursal.");
+          } else {
+            baseDatosMemoria.sucursales.push(body);
+            actualizarSelectoresSucursal();
+            return body;
+          }
+        }
+
+        const slug = datosSucursal.nombre
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "");
+        const nueva = {
+          id: `${slug || "sucursal"}-${Date.now().toString().slice(-4)}`,
+          nombre: datosSucursal.nombre,
+          direccion: datosSucursal.direccion || "",
+          encargado: datosSucursal.encargado || "",
+          activa: true,
+        };
+        baseDatosMemoria.sucursales.push(nueva);
+        guardarListaLocal(CLAVE_LOCAL_SUCURSALES, baseDatosMemoria.sucursales);
+        actualizarSelectoresSucursal();
+        return nueva;
       }
 
       /* =======================================================================
@@ -2719,7 +2829,10 @@
         modalEliminarMensaje: document.getElementById("modalEliminarMensaje"),
         btnCancelarEliminar: document.getElementById("btnCancelarEliminar"),
         btnConfirmarEliminar: document.getElementById("btnConfirmarEliminar"),
-        // Maquetas
+        // Ventas, Sucursales y Reportes
+        posToast: document.getElementById("posToast"),
+        posToastMessage: document.getElementById("posToastMessage"),
+        btnCerrarPosToast: document.getElementById("btnCerrarPosToast"),
         posBuscador: document.getElementById("posBuscador"),
         posCatalogoGrid: document.getElementById("posCatalogoGrid"),
         posCarritoLista: document.getElementById("posCarritoLista"),
@@ -2727,7 +2840,19 @@
         posTotal: document.getElementById("posTotal"),
         posMetodoPago: document.getElementById("posMetodoPago"),
         posSucursalNombre: document.getElementById("posSucursalNombre"),
+        btnCobrarVenta: document.getElementById("btnCobrarVenta"),
+        btnVaciarCarrito: document.getElementById("btnVaciarCarrito"),
+        sucursalToast: document.getElementById("sucursalToast"),
+        sucursalToastMessage: document.getElementById("sucursalToastMessage"),
+        btnCerrarSucursalToast: document.getElementById("btnCerrarSucursalToast"),
+        formSucursal: document.getElementById("formSucursal"),
+        mockSucursalNombre: document.getElementById("mockSucursalNombre"),
+        mockSucursalEncargado: document.getElementById("mockSucursalEncargado"),
+        mockSucursalDireccion: document.getElementById("mockSucursalDireccion"),
+        btnGuardarSucursal: document.getElementById("btnGuardarSucursal"),
         tablaSucursalesBody: document.getElementById("tablaSucursalesBody"),
+        reporteVentasDia: document.getElementById("reporteVentasDia"),
+        reporteMasVendidos: document.getElementById("reporteMasVendidos"),
         reporteStockCritico: document.getElementById("reporteStockCritico"),
       };
 
@@ -2736,10 +2861,10 @@
          ======================================================================= */
       const titulosPorSeccion = {
         productos: "Registro y catálogo de productos",
-        ventas: "Punto de venta (Maqueta)",
+        ventas: "Punto de venta",
         inventario: "Control de inventario",
-        sucursales: "Gestión de sucursales (Maqueta)",
-        reportes: "Reportes de tienda (Maqueta)",
+        sucursales: "Gestión de sucursales",
+        reportes: "Reportes de tienda",
       };
 
       function cambiarSeccion(nombreSeccion) {
@@ -3237,8 +3362,58 @@
       }
 
       /* =======================================================================
-         8. RENDERIZADO DE MAQUETAS PREPARADAS (VENTAS, SUCURSALES, REPORTES)
+         8. PUNTO DE VENTA (VENTAS), SUCURSALES Y REPORTES
          ======================================================================= */
+
+      let timerPosToast = null;
+      function mostrarMensajePOS(mensaje, esError = false) {
+        el.posToastMessage.textContent = mensaje;
+        el.posToast.classList.toggle("is-error", Boolean(esError));
+        el.posToast.classList.add("is-visible");
+        clearTimeout(timerPosToast);
+        timerPosToast = setTimeout(() => {
+          el.posToast.classList.remove("is-visible");
+        }, 5500);
+      }
+
+      let timerSucToast = null;
+      function mostrarMensajeSucursal(mensaje, esError = false) {
+        el.sucursalToastMessage.textContent = mensaje;
+        el.sucursalToast.classList.toggle("is-error", Boolean(esError));
+        el.sucursalToast.classList.add("is-visible");
+        clearTimeout(timerSucToast);
+        timerSucToast = setTimeout(() => {
+          el.sucursalToast.classList.remove("is-visible");
+        }, 5000);
+      }
+
+      function agregarProductoACarritoPOS(prod) {
+        if (!prod || !prod.activo) return;
+        if (prod.stockActual <= 0) {
+          mostrarMensajePOS(`"${prod.nombre}" está sin stock disponible.`, true);
+          return;
+        }
+
+        const existente = estadoUI.carritoPos.find((i) => i.productoId === prod.id);
+        if (existente) {
+          if (existente.cantidad + 1 > prod.stockActual) {
+            mostrarMensajePOS(
+              `No puedes agregar más de ${prod.stockActual} unidades de "${prod.nombre}".`,
+              true
+            );
+            return;
+          }
+          existente.cantidad += 1;
+        } else {
+          estadoUI.carritoPos.push({
+            productoId: prod.id,
+            nombre: prod.nombre,
+            cantidad: 1,
+            precioUnitario: prod.precioVenta,
+          });
+        }
+        renderizarPOS();
+      }
 
       function renderizarPOS() {
         const sucursalObj = obtenerSucursales().find((s) => s.id === estadoUI.sucursalActiva);
@@ -3253,22 +3428,33 @@
           el.posCatalogoGrid.innerHTML = `<p style="color: var(--text-muted); margin: 8px 0;">No hay productos activos que coincidan.</p>`;
         } else {
           el.posCatalogoGrid.innerHTML = productos
-            .map(
-              (p) => `
-              <button type="button" class="pos-item-btn" data-pos-add="${escaparHTML(p.id)}">
+            .map((p) => {
+              const agotado = p.stockActual <= 0;
+              return `
+              <button
+                type="button"
+                class="pos-item-btn"
+                data-pos-add="${escaparHTML(p.id)}"
+                ${agotado ? "disabled" : ""}
+                style="${agotado ? "opacity: 0.55; cursor: not-allowed;" : ""}"
+              >
                 <strong style="font-size: 0.92rem">${escaparHTML(p.nombre)}</strong>
                 <span class="product-meta font-mono-num">${escaparHTML(p.codigoBarras)}</span>
-                <span class="font-mono-num" style="color: var(--green-primary); font-weight: 700;">
-                  ${formatearMoneda(p.precioVenta)} · Stock: ${p.stockActual}
+                <span class="font-mono-num" style="color: ${agotado ? "var(--red-accent)" : "var(--green-primary)"}; font-weight: 700;">
+                  ${formatearMoneda(p.precioVenta)} · ${agotado ? "Sin stock" : `Stock: ${p.stockActual}`}
                 </span>
               </button>
-            `
-            )
+            `;
+            })
             .join("");
         }
 
-        if (estadoUI.carritoPos.length === 0) {
-          el.posCarritoLista.innerHTML = `<p style="color: var(--text-muted); margin: 4px 0;">Agrega productos del catálogo izquierdo para ver la maqueta del carrito.</p>`;
+        const carritoTieneItems = estadoUI.carritoPos.length > 0;
+        el.btnCobrarVenta.disabled = !carritoTieneItems;
+        el.btnVaciarCarrito.style.display = carritoTieneItems ? "inline-flex" : "none";
+
+        if (!carritoTieneItems) {
+          el.posCarritoLista.innerHTML = `<p style="color: var(--text-muted); margin: 4px 0;">Agrega productos del catálogo izquierdo para iniciar una venta.</p>`;
           el.posSubtotal.textContent = formatearMoneda(0);
           el.posTotal.textContent = formatearMoneda(0);
           return;
@@ -3280,7 +3466,7 @@
             <div class="pos-cart-row">
               <div>
                 <div style="font-weight: 600; font-size: 0.92rem">${escaparHTML(item.nombre)}</div>
-                <div class="product-meta font-mono-num">${formatearMoneda(item.precioUnitario)} c/u</div>
+                <div class="product-meta font-mono-num">${formatearMoneda(item.precioUnitario)} c/u · Subtotal: ${formatearMoneda(item.precioUnitario * item.cantidad)}</div>
               </div>
               <div class="pos-qty-controls">
                 <button type="button" class="btn btn-secondary btn-sm" data-pos-qty="-1" data-id="${escaparHTML(item.productoId)}" aria-label="Disminuir cantidad">−</button>
@@ -3292,14 +3478,13 @@
           )
           .join("");
 
-        // Construimos la estructura de venta preparada para calcular totales
-        const ventaSimulada = crearEstructuraVenta(
+        const ventaCalculada = crearEstructuraVenta(
           estadoUI.sucursalActiva,
           estadoUI.carritoPos,
           el.posMetodoPago.value
         );
-        el.posSubtotal.textContent = formatearMoneda(ventaSimulada.total);
-        el.posTotal.textContent = formatearMoneda(ventaSimulada.total);
+        el.posSubtotal.textContent = formatearMoneda(ventaCalculada.total);
+        el.posTotal.textContent = formatearMoneda(ventaCalculada.total);
       }
 
       function renderizarSucursalesMaqueta() {
@@ -3309,8 +3494,8 @@
             (s) => `
             <tr>
               <td><strong>${escaparHTML(s.nombre)}</strong></td>
-              <td>${escaparHTML(s.direccion)}</td>
-              <td>${escaparHTML(s.encargado)}</td>
+              <td>${escaparHTML(s.direccion || "Sin dirección")}</td>
+              <td>${escaparHTML(s.encargado || "Sin asignar")}</td>
               <td><span class="status-text is-active">${s.activa ? "Activa" : "Inactiva"}</span></td>
             </tr>
           `
@@ -3319,6 +3504,57 @@
       }
 
       function renderizarReportesMaqueta() {
+        // 1. Ventas del día calculadas con ventas reales de la sucursal
+        const hoyStr = new Date().toDateString();
+        const ventasHoy = baseDatosMemoria.ventas.filter((v) => {
+          if (estadoUI.sucursalActiva !== "todas" && v.sucursalId !== estadoUI.sucursalActiva) {
+            return false;
+          }
+          return new Date(v.fecha).toDateString() === hoyStr;
+        });
+
+        let efectivo = 0;
+        let qr = 0;
+        let tarjetaTransfer = 0;
+        ventasHoy.forEach((v) => {
+          if (v.metodoPago === "Efectivo") efectivo += Number(v.total);
+          else if (v.metodoPago === "QR") qr += Number(v.total);
+          else tarjetaTransfer += Number(v.total);
+        });
+        const totalDia = efectivo + qr + tarjetaTransfer;
+
+        el.reporteVentasDia.innerHTML = `
+          <li><span>Efectivo</span><strong class="font-mono-num">${formatearMoneda(efectivo)}</strong></li>
+          <li><span>Pagos con QR</span><strong class="font-mono-num">${formatearMoneda(qr)}</strong></li>
+          <li><span>Tarjeta / Transferencia</span><strong class="font-mono-num">${formatearMoneda(tarjetaTransfer)}</strong></li>
+          <li><strong>Total del día (${ventasHoy.length} vtas.)</strong><strong class="font-mono-num" style="color: var(--green-primary)">${formatearMoneda(totalDia)}</strong></li>
+        `;
+
+        // 2. Productos más vendidos
+        const conteoVendidos = new Map();
+        baseDatosMemoria.ventas
+          .filter((v) => estadoUI.sucursalActiva === "todas" || v.sucursalId === estadoUI.sucursalActiva)
+          .forEach((v) => {
+            (v.items || []).forEach((it) => {
+              const prod = obtenerProductoPorId(it.productoId);
+              const nombre = it.nombre || (prod ? prod.nombre : "Producto");
+              conteoVendidos.set(nombre, (conteoVendidos.get(nombre) || 0) + Number(it.cantidad || 0));
+            });
+          });
+
+        const topVendidos = Array.from(conteoVendidos.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5);
+
+        if (topVendidos.length === 0) {
+          el.reporteMasVendidos.innerHTML = `<li style="color: var(--text-muted)">Aún no hay ventas registradas.</li>`;
+        } else {
+          el.reporteMasVendidos.innerHTML = topVendidos
+            .map(([nombre, cant], i) => `<li><span>${i + 1}. ${escaparHTML(nombre)}</span><strong class="tabular-nums">${cant} u.</strong></li>`)
+            .join("");
+        }
+
+        // 3. Stock crítico actual
         const criticos = obtenerProductos({ sucursalId: estadoUI.sucursalActiva }).filter(
           (p) => p.stockActual < p.stockMinimo
         );
@@ -3419,14 +3655,38 @@
           el.estadoTexto.textContent = el.estadoProducto.checked ? "Activo" : "Inactivo";
         });
 
-        // Carga de imagen con vista previa usando FileReader
+        // Carga y compresión ligera de imagen para vista previa y guardado rápido
         el.imagenProducto.addEventListener("change", (e) => {
           const archivo = e.target.files && e.target.files[0];
           if (!archivo) return;
 
           const lector = new FileReader();
           lector.onload = (ev) => {
-            renderizarImagenPreview(ev.target.result, archivo.name);
+            const img = new Image();
+            img.onload = () => {
+              const maxDim = 600;
+              let { width, height } = img;
+              if (width > maxDim || height > maxDim) {
+                if (width > height) {
+                  height = Math.round((height * maxDim) / width);
+                  width = maxDim;
+                } else {
+                  width = Math.round((width * maxDim) / height);
+                  height = maxDim;
+                }
+              }
+              const canvas = document.createElement("canvas");
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext("2d");
+              ctx.drawImage(img, 0, 0, width, height);
+              const comprimida = canvas.toDataURL("image/jpeg", 0.78);
+              renderizarImagenPreview(comprimida, archivo.name);
+            };
+            img.onerror = () => {
+              renderizarImagenPreview(ev.target.result, archivo.name);
+            };
+            img.src = ev.target.result;
           };
           lector.readAsDataURL(archivo);
         });
@@ -3563,28 +3823,36 @@
           }
         });
 
-        // Maqueta interactiva de Ventas (POS)
+        // Punto de venta (Ventas): búsqueda, lector USB con Enter, carrito y cobro real
         el.posBuscador.addEventListener("input", renderizarPOS);
+        el.posBuscador.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            const codigo = el.posBuscador.value.trim().toLowerCase();
+            if (!codigo) return;
+            const coincidencia = obtenerProductos({ sucursalId: estadoUI.sucursalActiva }).find(
+              (p) => p.activo && p.codigoBarras.toLowerCase() === codigo
+            );
+            if (coincidencia) {
+              agregarProductoACarritoPOS(coincidencia);
+              el.posBuscador.value = "";
+              renderizarPOS();
+            } else {
+              mostrarMensajePOS(`No se encontró ningún producto activo con código "${el.posBuscador.value.trim()}".`, true);
+            }
+          }
+        });
+
         el.posMetodoPago.addEventListener("change", renderizarPOS);
+        el.btnCerrarPosToast.addEventListener("click", () => {
+          el.posToast.classList.remove("is-visible");
+        });
 
         el.posCatalogoGrid.addEventListener("click", (e) => {
           const btn = e.target.closest("button[data-pos-add]");
           if (!btn) return;
           const prod = obtenerProductoPorId(btn.dataset.posAdd);
-          if (!prod) return;
-
-          const existente = estadoUI.carritoPos.find((i) => i.productoId === prod.id);
-          if (existente) {
-            existente.cantidad += 1;
-          } else {
-            estadoUI.carritoPos.push({
-              productoId: prod.id,
-              nombre: prod.nombre,
-              cantidad: 1,
-              precioUnitario: prod.precioVenta,
-            });
-          }
-          renderizarPOS();
+          if (prod) agregarProductoACarritoPOS(prod);
         });
 
         el.posCarritoLista.addEventListener("click", (e) => {
@@ -3595,11 +3863,82 @@
           const item = estadoUI.carritoPos.find((i) => i.productoId === id);
           if (!item) return;
 
+          const prod = obtenerProductoPorId(id);
+          if (delta > 0 && prod && item.cantidad + delta > prod.stockActual) {
+            mostrarMensajePOS(`Stock máximo disponible para "${prod.nombre}": ${prod.stockActual}.`, true);
+            return;
+          }
+
           item.cantidad += delta;
           if (item.cantidad <= 0) {
             estadoUI.carritoPos = estadoUI.carritoPos.filter((i) => i.productoId !== id);
           }
           renderizarPOS();
+        });
+
+        el.btnVaciarCarrito.addEventListener("click", () => {
+          estadoUI.carritoPos = [];
+          renderizarPOS();
+        });
+
+        el.btnCobrarVenta.addEventListener("click", async () => {
+          if (estadoUI.carritoPos.length === 0) return;
+
+          el.btnCobrarVenta.disabled = true;
+          el.btnCobrarVenta.textContent = "Procesando venta...";
+
+          try {
+            const sucursalVenta =
+              estadoUI.sucursalActiva === "todas" ? "sucursal-principal" : estadoUI.sucursalActiva;
+            const ventaRegistrada = await registrarVenta(
+              sucursalVenta,
+              estadoUI.carritoPos,
+              el.posMetodoPago.value
+            );
+            estadoUI.carritoPos = [];
+            refrescarTodo();
+            mostrarMensajePOS(
+              `Venta registrada por ${formatearMoneda(ventaRegistrada.total)} (${ventaRegistrada.metodoPago}). Stock actualizado.`
+            );
+          } catch (error) {
+            mostrarMensajePOS(error.message || "No se pudo completar la venta.", true);
+          } finally {
+            el.btnCobrarVenta.textContent = "Cobrar y registrar venta";
+            el.btnCobrarVenta.disabled = estadoUI.carritoPos.length === 0;
+          }
+        });
+
+        // Sucursales: guardar nueva sucursal
+        el.btnCerrarSucursalToast.addEventListener("click", () => {
+          el.sucursalToast.classList.remove("is-visible");
+        });
+
+        el.formSucursal.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const nombre = el.mockSucursalNombre.value.trim();
+          const encargado = el.mockSucursalEncargado.value.trim();
+          const direccion = el.mockSucursalDireccion.value.trim();
+
+          if (!nombre) {
+            mostrarMensajeSucursal("El nombre de la sucursal es obligatorio.", true);
+            el.mockSucursalNombre.focus();
+            return;
+          }
+
+          el.btnGuardarSucursal.disabled = true;
+          el.btnGuardarSucursal.textContent = "Guardando...";
+
+          try {
+            const nueva = await guardarSucursal({ nombre, encargado, direccion });
+            el.formSucursal.reset();
+            renderizarSucursalesMaqueta();
+            mostrarMensajeSucursal(`Sucursal "${nueva.nombre}" registrada correctamente.`);
+          } catch (error) {
+            mostrarMensajeSucursal(error.message || "No se pudo guardar la sucursal.", true);
+          } finally {
+            el.btnGuardarSucursal.disabled = false;
+            el.btnGuardarSucursal.textContent = "Guardar sucursal";
+          }
         });
       }
 

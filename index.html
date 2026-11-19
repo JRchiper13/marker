@@ -547,14 +547,15 @@
         display: flex;
       }
 
-      /* Campo de código de barras con botón Escanear (Próximamente) */
+      /* Campo de código de barras con botón Escanear por cámara */
       .barcode-input-row {
         display: flex;
         align-items: stretch;
         gap: 10px;
       }
 
-      .barcode-input-row .input-control {
+      .barcode-input-row .input-control,
+      .barcode-input-row .search-wrap {
         flex: 1;
         min-width: 0;
       }
@@ -562,24 +563,35 @@
       .btn-scan {
         min-height: 44px;
         padding: 8px 14px;
-        border: 1px dashed var(--border-strong);
+        border: 1px solid var(--green-primary);
         border-radius: var(--radius-md);
-        background-color: var(--bg-subtle);
-        color: var(--text-muted);
+        background-color: var(--green-soft);
+        color: var(--green-text);
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 8px;
-        font-size: 0.86rem;
+        font-size: 0.88rem;
         font-weight: 600;
         white-space: nowrap;
-        cursor: not-allowed;
+        cursor: pointer;
         flex-shrink: 0;
+        transition: background-color var(--transition-fast), border-color var(--transition-fast),
+          transform var(--transition-fast);
       }
 
-      .scan-soon-note {
-        font-size: 0.75rem;
-        font-weight: 500;
-        color: var(--orange-strong);
+      .btn-scan:hover:not(:disabled) {
+        background-color: var(--green-primary);
+        color: #ffffff;
+      }
+
+      .btn-scan:active:not(:disabled) {
+        transform: scale(0.98);
+      }
+
+      .btn-scan:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
       }
 
       /* Prefijo Bs en inputs numéricos de precio */
@@ -1213,6 +1225,110 @@
         margin-top: 4px;
       }
 
+      /* Modal del escáner de cámara */
+      .modal-dialog.is-scanner {
+        max-width: 540px;
+        gap: 14px;
+      }
+
+      .scanner-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .scanner-viewport {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        background-color: #0d1712;
+        border-radius: var(--radius-md);
+        overflow: hidden;
+        border: 1px solid var(--border-strong);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .scanner-video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .scanner-reticle {
+        position: absolute;
+        inset: 18% 12%;
+        border: 2px solid rgba(255, 255, 255, 0.78);
+        border-radius: var(--radius-md);
+        box-shadow: 0 0 0 9999px rgba(10, 20, 14, 0.36);
+        pointer-events: none;
+        overflow: hidden;
+      }
+
+      .scanner-line {
+        position: absolute;
+        left: 6%;
+        right: 6%;
+        height: 2px;
+        background-color: #22c55e;
+        box-shadow: 0 0 8px rgba(34, 197, 94, 0.9);
+        animation: scannerSweep 2.1s ease-in-out infinite;
+      }
+
+      @keyframes scannerSweep {
+        0%,
+        100% {
+          top: 12%;
+        }
+        50% {
+          top: 86%;
+        }
+      }
+
+      .scanner-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .scanner-controls .select-control {
+        flex: 1;
+        min-width: 180px;
+        min-height: 40px;
+        padding: 8px 12px;
+      }
+
+      .scanner-status {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin: 0;
+      }
+
+      .scanner-feedback {
+        display: none;
+        padding: 10px 12px;
+        border-radius: var(--radius-md);
+        font-size: 0.88rem;
+        font-weight: 600;
+        background-color: var(--green-soft);
+        border: 1px solid var(--green-border);
+        color: var(--green-text);
+      }
+
+      .scanner-feedback.is-visible {
+        display: block;
+      }
+
+      .scanner-feedback.is-error {
+        background-color: var(--red-soft);
+        border-color: var(--red-border);
+        color: var(--red-accent);
+      }
+
       /* Fondo oscuro cuando se abre menú en móvil */
       .sidebar-overlay {
         display: none;
@@ -1500,11 +1616,11 @@
                   <input type="hidden" id="productoIdEdicion" value="" />
 
                   <div class="form-grid">
-                    <!-- Código de barras / SKU + botón Escanear (Próximamente) -->
+                    <!-- Código de barras / SKU + botón Escanear con cámara -->
                     <div class="field-group">
                       <label for="codigoBarras" class="field-label">
                         <span>Código de barras / SKU <span class="required-mark">*</span></span>
-                        <span class="field-hint-inline">Listo para lector USB (Enter)</span>
+                        <span class="field-hint-inline">Lector USB o cámara</span>
                       </label>
                       <div class="barcode-input-row">
                         <input
@@ -1520,8 +1636,7 @@
                           type="button"
                           id="btnEscanearCamara"
                           class="btn-scan"
-                          disabled
-                          title="Escaneo con cámara disponible próximamente"
+                          title="Escanear código de barras con la cámara"
                         >
                           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path d="M3 7V5a2 2 0 0 1 2-2h2" />
@@ -1531,7 +1646,6 @@
                             <line x1="7" y1="12" x2="17" y2="12" />
                           </svg>
                           <span>Escanear</span>
-                          <span class="scan-soon-note">Próximamente</span>
                         </button>
                       </div>
                       <span id="error-codigoBarras" class="field-error" aria-live="polite"></span>
@@ -1920,22 +2034,39 @@
                 <div class="panel-header">
                   <div>
                     <h2 class="panel-title">Catálogo rápido para venta</h2>
-                    <p class="panel-subtitle">Haz clic en un producto o escanea su código de barras y presiona Enter.</p>
+                    <p class="panel-subtitle">Haz clic en un producto, usa tu lector USB o escanea con la cámara.</p>
                   </div>
                 </div>
                 <div class="panel-body">
-                  <div class="search-wrap">
-                    <svg class="search-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                      <circle cx="11" cy="11" r="8" />
-                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg>
-                    <input
-                      type="search"
-                      id="posBuscador"
-                      class="input-control"
-                      placeholder="Buscar producto o escanear código + Enter..."
-                      autocomplete="off"
-                    />
+                  <div class="barcode-input-row">
+                    <div class="search-wrap">
+                      <svg class="search-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                      </svg>
+                      <input
+                        type="search"
+                        id="posBuscador"
+                        class="input-control"
+                        placeholder="Buscar producto o escanear código + Enter..."
+                        autocomplete="off"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      id="btnPosEscanearCamara"
+                      class="btn-scan"
+                      title="Escanear producto con cámara para agregar al carrito"
+                    >
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+                        <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+                        <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+                        <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+                        <line x1="7" y1="12" x2="17" y2="12" />
+                      </svg>
+                      <span>Escanear</span>
+                    </button>
                   </div>
 
                   <div id="posCatalogoGrid" class="pos-catalog-list"></div>
@@ -2144,6 +2275,48 @@
         <div class="modal-actions">
           <button type="button" id="btnCancelarEliminar" class="btn btn-secondary btn-sm">Cancelar</button>
           <button type="button" id="btnConfirmarEliminar" class="btn btn-danger btn-sm">Sí, eliminar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =======================================================================
+         MODAL DE ESCÁNER DE CÓDIGO DE BARRAS CON CÁMARA
+         ======================================================================= -->
+    <div
+      id="modalEscaner"
+      class="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="escanerTitulo"
+    >
+      <div class="modal-dialog is-scanner">
+        <div class="scanner-header">
+          <div>
+            <h3 id="escanerTitulo" class="modal-title">Escanear código de barras</h3>
+            <p id="escanerSubtitulo" class="modal-text">Apunta la cámara al código de barras del producto.</p>
+          </div>
+          <button type="button" id="btnCerrarEscaner" class="btn btn-secondary btn-sm">Cerrar</button>
+        </div>
+
+        <div class="scanner-viewport">
+          <video id="escanerVideo" class="scanner-video" playsinline muted autoplay></video>
+          <div class="scanner-reticle" aria-hidden="true">
+            <div class="scanner-line"></div>
+          </div>
+        </div>
+
+        <div class="scanner-controls">
+          <select id="escanerSelectCamara" class="select-control" aria-label="Seleccionar cámara" style="display: none"></select>
+          <button type="button" id="btnLinternaEscaner" class="btn btn-secondary btn-sm" style="display: none">
+            Linterna
+          </button>
+        </div>
+
+        <p id="escanerEstado" class="scanner-status">Iniciando cámara...</p>
+        <div id="escanerFeedback" class="scanner-feedback" role="status" aria-live="polite"></div>
+
+        <div class="modal-actions">
+          <button type="button" id="btnCerrarEscanerPie" class="btn btn-primary btn-sm">Listo</button>
         </div>
       </div>
     </div>
@@ -2829,6 +3002,19 @@
         modalEliminarMensaje: document.getElementById("modalEliminarMensaje"),
         btnCancelarEliminar: document.getElementById("btnCancelarEliminar"),
         btnConfirmarEliminar: document.getElementById("btnConfirmarEliminar"),
+        // Escáner con cámara
+        btnEscanearCamara: document.getElementById("btnEscanearCamara"),
+        btnPosEscanearCamara: document.getElementById("btnPosEscanearCamara"),
+        modalEscaner: document.getElementById("modalEscaner"),
+        escanerTitulo: document.getElementById("escanerTitulo"),
+        escanerSubtitulo: document.getElementById("escanerSubtitulo"),
+        escanerVideo: document.getElementById("escanerVideo"),
+        escanerEstado: document.getElementById("escanerEstado"),
+        escanerSelectCamara: document.getElementById("escanerSelectCamara"),
+        btnLinternaEscaner: document.getElementById("btnLinternaEscaner"),
+        escanerFeedback: document.getElementById("escanerFeedback"),
+        btnCerrarEscaner: document.getElementById("btnCerrarEscaner"),
+        btnCerrarEscanerPie: document.getElementById("btnCerrarEscanerPie"),
         // Ventas, Sucursales y Reportes
         posToast: document.getElementById("posToast"),
         posToastMessage: document.getElementById("posToastMessage"),
@@ -2880,8 +3066,9 @@
         });
 
         cerrarMenuMobile();
+        cerrarEscanerCamara();
 
-        // Actualizar vistas maqueta cuando se entra a ellas
+        // Actualizar vistas cuando se entra a ellas
         if (nombreSeccion === "ventas") renderizarPOS();
         if (nombreSeccion === "sucursales") renderizarSucursalesMaqueta();
         if (nombreSeccion === "reportes") renderizarReportesMaqueta();
@@ -3940,6 +4127,384 @@
             el.btnGuardarSucursal.textContent = "Guardar sucursal";
           }
         });
+
+        // Escáner con cámara en formulario de productos y en Ventas (POS)
+        el.btnEscanearCamara.addEventListener("click", () => abrirEscanerCamara("producto"));
+        el.btnPosEscanearCamara.addEventListener("click", () => abrirEscanerCamara("ventas"));
+        el.btnCerrarEscaner.addEventListener("click", cerrarEscanerCamara);
+        el.btnCerrarEscanerPie.addEventListener("click", cerrarEscanerCamara);
+        el.modalEscaner.addEventListener("click", (e) => {
+          if (e.target === el.modalEscaner) cerrarEscanerCamara();
+        });
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape" && el.modalEscaner.classList.contains("is-open")) {
+            cerrarEscanerCamara();
+          }
+        });
+        el.escanerSelectCamara.addEventListener("change", () => {
+          if (estadoEscaner.activo) {
+            iniciarFlujoCamara(el.escanerSelectCamara.value);
+          }
+        });
+        el.btnLinternaEscaner.addEventListener("click", alternarLinternaEscaner);
+      }
+
+      /* =======================================================================
+         9B. ESCÁNER DE CÓDIGO DE BARRAS CON CÁMARA (BarcodeDetector + ZXing)
+         ======================================================================= */
+      const estadoEscaner = {
+        activo: false,
+        modo: "producto", // "producto" | "ventas"
+        stream: null,
+        timerId: null,
+        linternaEncendida: false,
+        ultimoCodigo: "",
+        ultimoTimestamp: 0,
+        detectorNativo: null,
+        lectorZXing: null,
+        canvasCaptura: null,
+      };
+
+      function reproducirBeepEscaner() {
+        try {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return;
+          const ctx = new AudioCtx();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(1040, ctx.currentTime);
+          gain.gain.setValueAtTime(0.08, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.11);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.12);
+          osc.onended = () => ctx.close().catch(() => {});
+        } catch (_err) {
+          // Ignorar si el navegador bloquea AudioContext
+        }
+      }
+
+      function mostrarFeedbackEscaner(mensaje, esError = false) {
+        el.escanerFeedback.textContent = mensaje;
+        el.escanerFeedback.classList.toggle("is-error", Boolean(esError));
+        el.escanerFeedback.classList.add("is-visible");
+      }
+
+      function cargarScriptZXing() {
+        if (window.ZXingBrowser && window.ZXingBrowser.BrowserMultiFormatReader) {
+          return Promise.resolve(window.ZXingBrowser);
+        }
+        return new Promise((resolve, reject) => {
+          const urls = [
+            "https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/zxing-browser.min.js",
+            "https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js",
+          ];
+          let idx = 0;
+          function intentar() {
+            if (idx >= urls.length) {
+              reject(new Error("No se pudo cargar el decodificador de códigos de barras."));
+              return;
+            }
+            const script = document.createElement("script");
+            script.src = urls[idx++];
+            script.async = true;
+            script.onload = () => {
+              if (window.ZXingBrowser && window.ZXingBrowser.BrowserMultiFormatReader) {
+                resolve(window.ZXingBrowser);
+              } else {
+                intentar();
+              }
+            };
+            script.onerror = () => intentar();
+            document.head.appendChild(script);
+          }
+          intentar();
+        });
+      }
+
+      async function prepararDetectorCodigos() {
+        const formatosDeseados = [
+          "ean_13",
+          "ean_8",
+          "upc_a",
+          "upc_e",
+          "code_128",
+          "code_39",
+          "code_93",
+          "codabar",
+          "itf",
+          "qr_code",
+        ];
+
+        if ("BarcodeDetector" in window) {
+          try {
+            let formatos = formatosDeseados;
+            if (typeof window.BarcodeDetector.getSupportedFormats === "function") {
+              const soportados = await window.BarcodeDetector.getSupportedFormats();
+              const interseccion = formatosDeseados.filter((f) => soportados.includes(f));
+              if (interseccion.length > 0) {
+                formatos = interseccion;
+              }
+            }
+            estadoEscaner.detectorNativo = new window.BarcodeDetector({ formats: formatos });
+            return "nativo";
+          } catch (_err) {
+            estadoEscaner.detectorNativo = null;
+          }
+        }
+
+        const ZXing = await cargarScriptZXing();
+        if (!estadoEscaner.lectorZXing) {
+          estadoEscaner.lectorZXing = new ZXing.BrowserMultiFormatReader();
+        }
+        return "zxing";
+      }
+
+      function detenerFlujoCamara() {
+        clearTimeout(estadoEscaner.timerId);
+        estadoEscaner.timerId = null;
+
+        if (estadoEscaner.stream) {
+          estadoEscaner.stream.getTracks().forEach((track) => track.stop());
+          estadoEscaner.stream = null;
+        }
+        el.escanerVideo.srcObject = null;
+        estadoEscaner.linternaEncendida = false;
+        el.btnLinternaEscaner.style.display = "none";
+        el.btnLinternaEscaner.textContent = "Linterna";
+      }
+
+      function cerrarEscanerCamara() {
+        estadoEscaner.activo = false;
+        detenerFlujoCamara();
+        el.modalEscaner.classList.remove("is-open");
+      }
+
+      async function alternarLinternaEscaner() {
+        if (!estadoEscaner.stream) return;
+        const [videoTrack] = estadoEscaner.stream.getVideoTracks();
+        if (!videoTrack || typeof videoTrack.applyConstraints !== "function") return;
+
+        const nuevoEstado = !estadoEscaner.linternaEncendida;
+        try {
+          await videoTrack.applyConstraints({ advanced: [{ torch: nuevoEstado }] });
+          estadoEscaner.linternaEncendida = nuevoEstado;
+          el.btnLinternaEscaner.textContent = nuevoEstado ? "Apagar linterna" : "Linterna";
+        } catch (_err) {
+          mostrarFeedbackEscaner("Esta cámara no permite controlar la linterna desde el navegador.", true);
+        }
+      }
+
+      async function actualizarListaCamaras(deviceIdActual) {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+        try {
+          const dispositivos = await navigator.mediaDevices.enumerateDevices();
+          const camaras = dispositivos.filter((d) => d.kind === "videoinput");
+          if (camaras.length <= 1) {
+            el.escanerSelectCamara.style.display = "none";
+            return;
+          }
+          el.escanerSelectCamara.innerHTML = camaras
+            .map(
+              (cam, i) =>
+                `<option value="${escaparHTML(cam.deviceId)}">${escaparHTML(
+                  cam.label || `Cámara ${i + 1}`
+                )}</option>`
+            )
+            .join("");
+          if (deviceIdActual && camaras.some((c) => c.deviceId === deviceIdActual)) {
+            el.escanerSelectCamara.value = deviceIdActual;
+          }
+          el.escanerSelectCamara.style.display = "block";
+        } catch (_err) {
+          el.escanerSelectCamara.style.display = "none";
+        }
+      }
+
+      function procesarCodigoEscaneado(codigoBruto) {
+        const codigo = String(codigoBruto || "").trim();
+        if (!codigo) return;
+
+        const ahora = Date.now();
+        if (codigo === estadoEscaner.ultimoCodigo && ahora - estadoEscaner.ultimoTimestamp < 1600) {
+          return;
+        }
+        estadoEscaner.ultimoCodigo = codigo;
+        estadoEscaner.ultimoTimestamp = ahora;
+        reproducirBeepEscaner();
+
+        if (estadoEscaner.modo === "producto") {
+          el.codigoBarras.value = codigo;
+          validarCampoIndividual("codigoBarras");
+          cerrarEscanerCamara();
+          mostrarConfirmacion(`Código de barras escaneado: ${codigo}`);
+          if (!el.nombreProducto.value.trim()) {
+            el.nombreProducto.focus();
+          }
+          return;
+        }
+
+        // Modo "ventas": buscar producto activo y agregarlo al carrito
+        const prod = obtenerProductos({ sucursalId: estadoUI.sucursalActiva }).find(
+          (p) => p.activo && p.codigoBarras.toLowerCase() === codigo.toLowerCase()
+        );
+
+        if (!prod) {
+          mostrarFeedbackEscaner(`Código "${codigo}" no encontrado en esta sucursal.`, true);
+          return;
+        }
+        if (prod.stockActual <= 0) {
+          mostrarFeedbackEscaner(`"${prod.nombre}" está sin stock disponible.`, true);
+          return;
+        }
+
+        const existente = estadoUI.carritoPos.find((i) => i.productoId === prod.id);
+        if (existente && existente.cantidad + 1 > prod.stockActual) {
+          mostrarFeedbackEscaner(
+            `Stock máximo alcanzado para "${prod.nombre}" (${prod.stockActual}).`,
+            true
+          );
+          return;
+        }
+
+        agregarProductoACarritoPOS(prod);
+        mostrarFeedbackEscaner(`Agregado: ${prod.nombre} (${formatearMoneda(prod.precioVenta)})`);
+      }
+
+      async function cicloDeteccionEscaner(motor) {
+        if (!estadoEscaner.activo) return;
+
+        try {
+          if (el.escanerVideo.readyState >= 2 && el.escanerVideo.videoWidth > 0) {
+            if (motor === "nativo" && estadoEscaner.detectorNativo) {
+              const codigos = await estadoEscaner.detectorNativo.detect(el.escanerVideo);
+              if (codigos && codigos.length > 0 && codigos[0].rawValue) {
+                procesarCodigoEscaneado(codigos[0].rawValue);
+              }
+            } else if (motor === "zxing" && estadoEscaner.lectorZXing) {
+              if (!estadoEscaner.canvasCaptura) {
+                estadoEscaner.canvasCaptura = document.createElement("canvas");
+              }
+              const canvas = estadoEscaner.canvasCaptura;
+              canvas.width = el.escanerVideo.videoWidth;
+              canvas.height = el.escanerVideo.videoHeight;
+              const ctx = canvas.getContext("2d", { willReadFrequently: true });
+              ctx.drawImage(el.escanerVideo, 0, 0, canvas.width, canvas.height);
+              try {
+                const resultado = estadoEscaner.lectorZXing.decodeFromCanvas(canvas);
+                if (resultado && typeof resultado.getText === "function") {
+                  procesarCodigoEscaneado(resultado.getText());
+                }
+              } catch (_notFound) {
+                // Sin código en este cuadro
+              }
+            }
+          }
+        } catch (_err) {
+          // Ignorar errores transitorios de cuadro
+        }
+
+        if (estadoEscaner.activo) {
+          estadoEscaner.timerId = setTimeout(() => cicloDeteccionEscaner(motor), 140);
+        }
+      }
+
+      async function iniciarFlujoCamara(deviceId = "") {
+        detenerFlujoCamara();
+        el.escanerEstado.textContent = "Solicitando acceso a la cámara...";
+
+        if (!window.isSecureContext) {
+          el.escanerEstado.textContent =
+            "La cámara requiere una conexión segura (HTTPS o localhost).";
+          mostrarFeedbackEscaner("Abre la aplicación mediante HTTPS para usar la cámara.", true);
+          return;
+        }
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          el.escanerEstado.textContent = "Este navegador no admite acceso a cámara.";
+          mostrarFeedbackEscaner("Usa tu lector USB o ingresa el código manualmente.", true);
+          return;
+        }
+
+        try {
+          const videoConstraints = deviceId
+            ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+            : { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } };
+
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: videoConstraints,
+            audio: false,
+          });
+
+          if (!estadoEscaner.activo) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+
+          estadoEscaner.stream = stream;
+          el.escanerVideo.srcObject = stream;
+          await el.escanerVideo.play();
+
+          const [track] = stream.getVideoTracks();
+          const settings = track && typeof track.getSettings === "function" ? track.getSettings() : {};
+          await actualizarListaCamaras(settings.deviceId || deviceId);
+
+          if (track && typeof track.getCapabilities === "function") {
+            const caps = track.getCapabilities();
+            if (caps && caps.torch) {
+              el.btnLinternaEscaner.style.display = "inline-flex";
+            }
+          }
+
+          el.escanerEstado.textContent = "Preparando lector de códigos...";
+          const motor = await prepararDetectorCodigos();
+          if (!estadoEscaner.activo) return;
+
+          el.escanerEstado.textContent =
+            estadoEscaner.modo === "ventas"
+              ? "Cámara activa — escanea productos continuamente para agregar al carrito."
+              : "Cámara activa — apunta al código de barras del producto.";
+          cicloDeteccionEscaner(motor);
+        } catch (err) {
+          let msg = "No se pudo iniciar la cámara.";
+          if (err && (err.name === "NotAllowedError" || err.name === "PermissionDeniedError")) {
+            msg = "Permiso de cámara denegado. Habilita el permiso en tu navegador y vuelve a intentar.";
+          } else if (err && (err.name === "NotFoundError" || err.name === "DevicesNotFoundError")) {
+            msg = "No se detectó ninguna cámara disponible en este dispositivo.";
+          } else if (err && err.message) {
+            msg = err.message;
+          }
+          el.escanerEstado.textContent = msg;
+          mostrarFeedbackEscaner(msg, true);
+        }
+      }
+
+      function abrirEscanerCamara(modo = "producto") {
+        estadoEscaner.activo = true;
+        estadoEscaner.modo = modo;
+        estadoEscaner.ultimoCodigo = "";
+        estadoEscaner.ultimoTimestamp = 0;
+
+        el.escanerFeedback.classList.remove("is-visible", "is-error");
+        el.escanerFeedback.textContent = "";
+        el.escanerSelectCamara.style.display = "none";
+
+        if (modo === "ventas") {
+          el.escanerTitulo.textContent = "Escanear producto para venta";
+          el.escanerSubtitulo.textContent =
+            "Cada código detectado se agregará automáticamente al carrito.";
+          el.btnCerrarEscanerPie.textContent = "Listo / Volver al carrito";
+        } else {
+          el.escanerTitulo.textContent = "Escanear código de barras";
+          el.escanerSubtitulo.textContent =
+            "Apunta la cámara al código para completar el campo SKU / Código de barras.";
+          el.btnCerrarEscanerPie.textContent = "Cancelar";
+        }
+
+        el.modalEscaner.classList.add("is-open");
+        iniciarFlujoCamara();
       }
 
       /* =======================================================================

@@ -1176,6 +1176,90 @@
         font-weight: 700;
       }
 
+      /* Panel de cobro por QR y subida de imagen QR */
+      .pos-qr-panel {
+        margin-top: 14px;
+        padding: 14px;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        background-color: var(--bg-hover);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .pos-qr-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .pos-qr-box {
+        border: 1px dashed var(--border-strong);
+        border-radius: var(--radius-md);
+        background-color: var(--bg-surface);
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        min-height: 168px;
+        gap: 8px;
+      }
+
+      .pos-qr-img {
+        width: 100%;
+        max-width: 220px;
+        max-height: 220px;
+        object-fit: contain;
+        border-radius: var(--radius-sm);
+        background-color: #ffffff;
+        padding: 6px;
+        border: 1px solid var(--border-subtle);
+        cursor: zoom-in;
+      }
+
+      .pos-qr-empty {
+        font-size: 0.88rem;
+        color: var(--text-muted);
+        max-width: 30ch;
+        margin: 0;
+      }
+
+      .pos-qr-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .pos-qr-modal-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border-radius: var(--radius-md);
+        background-color: var(--bg-hover);
+        border: 1px solid var(--border-subtle);
+      }
+
+      .pos-qr-modal-img {
+        width: 100%;
+        max-width: 320px;
+        max-height: 320px;
+        object-fit: contain;
+        background-color: #ffffff;
+        padding: 10px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-subtle);
+      }
+
       /* Maqueta Próximamente genérica (Inventario) */
       .coming-soon-card {
         background-color: var(--bg-surface);
@@ -2207,8 +2291,6 @@
                     <select id="posMetodoPago" class="select-control">
                       <option value="Efectivo">Efectivo</option>
                       <option value="QR">QR</option>
-                      <option value="Tarjeta">Tarjeta</option>
-                      <option value="Transferencia">Transferencia</option>
                     </select>
                   </div>
 
@@ -2255,6 +2337,32 @@
                     <div id="posCambioBox" class="pos-change-box" aria-live="polite">
                       <span id="posCambioLabel" class="pos-change-label">Cambio a devolver</span>
                       <span id="posCambioValor" class="pos-change-value font-mono-num">Bs 0,00</span>
+                    </div>
+                  </div>
+
+                  <!-- Panel de pago por QR con subida y vista del código QR -->
+                  <div id="posQrPanel" class="pos-qr-panel" style="display: none">
+                    <div class="pos-qr-header">
+                      <span>Pago con QR</span>
+                      <span id="posQrMontoTotal" class="font-mono-num" style="color: var(--green-text)">Bs 0,00</span>
+                    </div>
+
+                    <div id="posQrPreviewContenedor" class="pos-qr-box">
+                      <p class="pos-qr-empty">Aún no subiste un código QR de cobro.</p>
+                    </div>
+
+                    <input type="file" id="posQrInput" accept="image/*" hidden />
+
+                    <div class="pos-qr-actions">
+                      <label for="posQrInput" id="btnSubirQrLabel" class="btn btn-secondary btn-sm">
+                        Subir imagen QR
+                      </label>
+                      <button type="button" id="btnAmpliarQr" class="btn btn-primary btn-sm" style="display: none">
+                        Ver QR grande
+                      </button>
+                      <button type="button" id="btnQuitarQr" class="btn btn-secondary btn-sm" style="display: none">
+                        Quitar
+                      </button>
                     </div>
                   </div>
 
@@ -2787,6 +2895,30 @@
       </div>
     </div>
 
+    <!-- =======================================================================
+         MODAL PARA MOSTRAR CÓDIGO QR EN GRANDE AL CLIENTE
+         ======================================================================= -->
+    <div
+      id="modalQrCobro"
+      class="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modalQrTitulo"
+    >
+      <div class="modal-dialog">
+        <h3 id="modalQrTitulo" class="modal-title">Escanea el código QR para pagar</h3>
+        <p id="modalQrTotalTexto" class="modal-text font-mono-num" style="font-weight: 700; color: var(--green-text)">
+          Total a cobrar: Bs 0,00
+        </p>
+        <div class="pos-qr-modal-box">
+          <img id="modalQrImagen" class="pos-qr-modal-img" src="" alt="Código QR de cobro" />
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="btnCerrarModalQr" class="btn btn-primary btn-sm">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
     <script>
       /* =======================================================================
          1. UTILIDADES LOCALES PARA BOLIVIA (MONEDA Bs Y FECHAS DD/MM/AAAA)
@@ -2903,98 +3035,16 @@
       const CLAVE_LOCAL_VENTAS = "minimarket_bolivia_ventas_v1";
       const CLAVE_LOCAL_SUCURSALES = "minimarket_bolivia_sucursales_v1";
       const CLAVE_LOCAL_MOVIMIENTOS = "minimarket_bolivia_movimientos_v1";
+      const CLAVE_LOCAL_QR_COBRO = "minimarket_bolivia_qr_cobro_v1";
       let usandoRespaldoLocal = false;
 
       const sucursalesPorDefecto = [
         {
           id: "sucursal-principal",
           nombre: "Sucursal principal",
-          direccion: "Av. Arce #2140, Zona Central",
-          encargado: "Administrador General",
+          direccion: "",
+          encargado: "",
           activa: true,
-        },
-      ];
-
-      const productosInicialesDemo = [
-        {
-          id: "prod_1001",
-          codigoBarras: "7771234000112",
-          nombre: "Leche entera PIL 946 ml",
-          categoria: "Lácteos",
-          marca: "PIL Andina",
-          unidad: "Unidad",
-          precioCompra: 6.2,
-          precioVenta: 7.5,
-          stockActual: 24,
-          stockMinimo: 10,
-          proveedor: "PIL Andina S.A.",
-          fechaVencimiento: sumarDiasAHoyISO(14),
-          sucursalId: "sucursal-principal",
-          imagenDataUrl: "",
-          descripcion: "Envase UHT larga vida, mantener en lugar fresco.",
-          activo: true,
-          creadoFecha: new Date().toISOString(),
-          actualizadoFecha: new Date().toISOString(),
-        },
-        {
-          id: "prod_1002",
-          codigoBarras: "7775001900221",
-          nombre: "Aceite refinado Fino 900 ml",
-          categoria: "Abarrotes",
-          marca: "Fino",
-          unidad: "Unidad",
-          precioCompra: 11.5,
-          precioVenta: 14.0,
-          stockActual: 4,
-          stockMinimo: 8,
-          proveedor: "Industrias de Aceite S.A.",
-          fechaVencimiento: sumarDiasAHoyISO(180),
-          sucursalId: "sucursal-principal",
-          imagenDataUrl: "",
-          descripcion: "Aceite vegetal comestible en botella PET.",
-          activo: true,
-          creadoFecha: new Date().toISOString(),
-          actualizadoFecha: new Date().toISOString(),
-        },
-        {
-          id: "prod_1003",
-          codigoBarras: "7779000112233",
-          nombre: "Coca-Cola Original 2 Litros",
-          categoria: "Bebidas",
-          marca: "Coca-Cola",
-          unidad: "Unidad",
-          precioCompra: 10.0,
-          precioVenta: 13.0,
-          stockActual: 18,
-          stockMinimo: 6,
-          proveedor: "Embol S.A.",
-          fechaVencimiento: sumarDiasAHoyISO(95),
-          sucursalId: "sucursal-principal",
-          imagenDataUrl: "",
-          descripcion: "Gaseosa retornable / no retornable.",
-          activo: true,
-          creadoFecha: new Date().toISOString(),
-          actualizadoFecha: new Date().toISOString(),
-        },
-        {
-          id: "prod_1004",
-          codigoBarras: "7772200445511",
-          nombre: "Yogurt bebible frutilla 1 Litro",
-          categoria: "Lácteos",
-          marca: "Delizia",
-          unidad: "Litro",
-          precioCompra: 9.0,
-          precioVenta: 11.5,
-          stockActual: 3,
-          stockMinimo: 5,
-          proveedor: "Delizia Ltda.",
-          fechaVencimiento: sumarDiasAHoyISO(-2),
-          sucursalId: "sucursal-principal",
-          imagenDataUrl: "",
-          descripcion: "Requiere refrigeración entre 2 °C y 6 °C.",
-          activo: true,
-          creadoFecha: new Date().toISOString(),
-          actualizadoFecha: new Date().toISOString(),
         },
       ];
 
@@ -3032,6 +3082,39 @@
 
       function guardarProductosLocales(lista) {
         guardarListaLocal(CLAVE_LOCAL_PRODUCTOS, lista);
+      }
+
+      function leerQrCobroLocal() {
+        try {
+          const guardado = localStorage.getItem(CLAVE_LOCAL_QR_COBRO);
+          if (guardado) {
+            const parsed = JSON.parse(guardado);
+            if (parsed && typeof parsed.dataUrl === "string") {
+              return {
+                dataUrl: parsed.dataUrl,
+                nombre: typeof parsed.nombre === "string" ? parsed.nombre : "",
+              };
+            }
+          }
+        } catch (_err) {
+          // Ignorar errores de almacenamiento
+        }
+        return { dataUrl: "", nombre: "" };
+      }
+
+      function guardarQrCobroLocal(dataUrl, nombre) {
+        try {
+          if (!dataUrl) {
+            localStorage.removeItem(CLAVE_LOCAL_QR_COBRO);
+          } else {
+            localStorage.setItem(
+              CLAVE_LOCAL_QR_COBRO,
+              JSON.stringify({ dataUrl, nombre: nombre || "QR de cobro" })
+            );
+          }
+        } catch (_err) {
+          // Ignorar errores de cuota
+        }
       }
 
       function limpiarAlmacenamientoLocal() {
@@ -3504,16 +3587,14 @@
             precioUnitario: Number(item.precioUnitario),
           })),
           total: Number(total.toFixed(2)),
-          metodoPago, // "Efectivo" | "QR" | "Tarjeta" | "Transferencia"
+          metodoPago, // "Efectivo" | "QR"
         };
       }
 
       /*
-       * FUTURO ESCÁNER CON CÁMARA:
-       * Aquí se integrará el escaneo usando la API nativa `window.BarcodeDetector`
-       * (con formatos ['ean_13', 'ean_8', 'code_128', 'upc_a', 'qr_code'])
-       * o la librería `@zxing/library` / `html5-qrcode` conectada a `navigator.mediaDevices.getUserMedia()`.
-       * Al detectar un código, se asignará a `#codigoBarras` y se disparará la validación.
+       * ESCÁNER CON CÁMARA:
+       * Usa la API nativa `window.BarcodeDetector` o `@zxing/browser`
+       * conectada a `navigator.mediaDevices.getUserMedia()`.
        */
 
       /* =======================================================================
@@ -3524,6 +3605,8 @@
         sucursalActiva: "sucursal-principal",
         imagenActualDataUrl: "",
         imagenNombreArchivo: "",
+        qrCobroDataUrl: "",
+        qrCobroNombre: "",
         idPendienteEliminar: null,
         carritoPos: [],
         adminDesbloqueado: false,
@@ -3673,6 +3756,17 @@
         posCambioBox: document.getElementById("posCambioBox"),
         posCambioLabel: document.getElementById("posCambioLabel"),
         posCambioValor: document.getElementById("posCambioValor"),
+        posQrPanel: document.getElementById("posQrPanel"),
+        posQrMontoTotal: document.getElementById("posQrMontoTotal"),
+        posQrPreviewContenedor: document.getElementById("posQrPreviewContenedor"),
+        posQrInput: document.getElementById("posQrInput"),
+        btnSubirQrLabel: document.getElementById("btnSubirQrLabel"),
+        btnAmpliarQr: document.getElementById("btnAmpliarQr"),
+        btnQuitarQr: document.getElementById("btnQuitarQr"),
+        modalQrCobro: document.getElementById("modalQrCobro"),
+        modalQrImagen: document.getElementById("modalQrImagen"),
+        modalQrTotalTexto: document.getElementById("modalQrTotalTexto"),
+        btnCerrarModalQr: document.getElementById("btnCerrarModalQr"),
         posSucursalNombre: document.getElementById("posSucursalNombre"),
         btnCobrarVenta: document.getElementById("btnCobrarVenta"),
         btnVaciarCarrito: document.getElementById("btnVaciarCarrito"),
@@ -4621,12 +4715,55 @@
         );
       }
 
+      function renderizarPanelQrPOS() {
+        const tieneQr = Boolean(estadoUI.qrCobroDataUrl);
+
+        if (tieneQr) {
+          el.posQrPreviewContenedor.innerHTML = `
+            <img
+              src="${estadoUI.qrCobroDataUrl}"
+              alt="Código QR de cobro"
+              class="pos-qr-img"
+              title="Haz clic para ampliar el código QR"
+            />
+          `;
+          el.btnSubirQrLabel.textContent = "Cambiar QR";
+          el.btnAmpliarQr.style.display = "inline-flex";
+          el.btnQuitarQr.style.display = "inline-flex";
+        } else {
+          el.posQrPreviewContenedor.innerHTML = `
+            <p class="pos-qr-empty">Aún no subiste un código QR de cobro. Sube la imagen de tu QR bancario o billetera móvil.</p>
+          `;
+          el.btnSubirQrLabel.textContent = "Subir imagen QR";
+          el.btnAmpliarQr.style.display = "none";
+          el.btnQuitarQr.style.display = "none";
+          el.posQrInput.value = "";
+        }
+      }
+
+      function abrirModalQrCobro() {
+        if (!estadoUI.qrCobroDataUrl) return;
+        const total = obtenerTotalCarritoPOS();
+        el.modalQrImagen.src = estadoUI.qrCobroDataUrl;
+        el.modalQrTotalTexto.textContent = `Total a cobrar: ${formatearMoneda(total)}`;
+        el.modalQrCobro.classList.add("is-open");
+      }
+
       function actualizarCalculadoraCambioPOS(totalOpcional) {
         const total =
           typeof totalOpcional === "number" ? totalOpcional : obtenerTotalCarritoPOS();
         const esEfectivo = el.posMetodoPago.value === "Efectivo";
+        const esQr = el.posMetodoPago.value === "QR";
 
         el.posEfectivoPanel.style.display = esEfectivo ? "flex" : "none";
+        el.posQrPanel.style.display = esQr ? "flex" : "none";
+
+        if (esQr) {
+          el.posQrMontoTotal.textContent = formatearMoneda(total);
+          renderizarPanelQrPOS();
+          return;
+        }
+
         if (!esEfectivo) return;
 
         const botonesBillete = el.posEfectivoPanel.querySelectorAll("button[data-pos-bill]");
@@ -4697,18 +4834,17 @@
 
         let efectivo = 0;
         let qr = 0;
-        let tarjetaTransfer = 0;
+        let totalDia = 0;
         ventasHoy.forEach((v) => {
-          if (v.metodoPago === "Efectivo") efectivo += Number(v.total);
-          else if (v.metodoPago === "QR") qr += Number(v.total);
-          else tarjetaTransfer += Number(v.total);
+          const monto = Number(v.total);
+          totalDia += monto;
+          if (v.metodoPago === "QR") qr += monto;
+          else efectivo += monto;
         });
-        const totalDia = efectivo + qr + tarjetaTransfer;
 
         el.reporteVentasDia.innerHTML = `
           <li><span>Efectivo</span><strong class="font-mono-num">${formatearMoneda(efectivo)}</strong></li>
           <li><span>Pagos con QR</span><strong class="font-mono-num">${formatearMoneda(qr)}</strong></li>
-          <li><span>Tarjeta / Transferencia</span><strong class="font-mono-num">${formatearMoneda(tarjetaTransfer)}</strong></li>
           <li><strong>Total del día (${ventasHoy.length} vtas.)</strong><strong class="font-mono-num" style="color: var(--green-primary)">${formatearMoneda(totalDia)}</strong></li>
         `;
 
@@ -5037,6 +5173,80 @@
           actualizarCalculadoraCambioPOS(total);
         });
 
+        // Subir, previsualizar, ampliar y quitar imagen de código QR de cobro
+        el.posQrInput.addEventListener("change", (e) => {
+          const archivo = e.target.files && e.target.files[0];
+          if (!archivo) return;
+
+          const lector = new FileReader();
+          lector.onload = (ev) => {
+            const resultado = ev.target && ev.target.result;
+            if (!resultado) return;
+
+            const img = new Image();
+            img.onload = () => {
+              const maxDim = 900;
+              let { width, height } = img;
+              let dataFinal = resultado;
+
+              if (width > maxDim || height > maxDim) {
+                if (width > height) {
+                  height = Math.round((height * maxDim) / width);
+                  width = maxDim;
+                } else {
+                  width = Math.round((width * maxDim) / height);
+                  height = maxDim;
+                }
+                const canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, width, height);
+                ctx.drawImage(img, 0, 0, width, height);
+                dataFinal = canvas.toDataURL("image/png");
+              }
+
+              estadoUI.qrCobroDataUrl = dataFinal;
+              estadoUI.qrCobroNombre = archivo.name;
+              guardarQrCobroLocal(dataFinal, archivo.name);
+              renderizarPanelQrPOS();
+              mostrarMensajePOS("Código QR guardado correctamente para tus cobros.");
+            };
+            img.onerror = () => {
+              mostrarMensajePOS("No se pudo leer la imagen seleccionada.", true);
+            };
+            img.src = resultado;
+          };
+          lector.readAsDataURL(archivo);
+        });
+
+        el.posQrPreviewContenedor.addEventListener("click", (e) => {
+          if (e.target.closest("img")) {
+            abrirModalQrCobro();
+          }
+        });
+
+        el.btnAmpliarQr.addEventListener("click", abrirModalQrCobro);
+
+        el.btnQuitarQr.addEventListener("click", () => {
+          estadoUI.qrCobroDataUrl = "";
+          estadoUI.qrCobroNombre = "";
+          guardarQrCobroLocal("", "");
+          renderizarPanelQrPOS();
+          mostrarMensajePOS("Código QR eliminado.");
+        });
+
+        el.btnCerrarModalQr.addEventListener("click", () => {
+          el.modalQrCobro.classList.remove("is-open");
+        });
+
+        el.modalQrCobro.addEventListener("click", (e) => {
+          if (e.target === el.modalQrCobro) {
+            el.modalQrCobro.classList.remove("is-open");
+          }
+        });
+
         el.btnCerrarPosToast.addEventListener("click", () => {
           el.posToast.classList.remove("is-visible");
         });
@@ -5261,8 +5471,13 @@
           if (e.target === el.modalEscaner) cerrarEscanerCamara();
         });
         document.addEventListener("keydown", (e) => {
-          if (e.key === "Escape" && el.modalEscaner.classList.contains("is-open")) {
-            cerrarEscanerCamara();
+          if (e.key === "Escape") {
+            if (el.modalEscaner.classList.contains("is-open")) {
+              cerrarEscanerCamara();
+            }
+            if (el.modalQrCobro.classList.contains("is-open")) {
+              el.modalQrCobro.classList.remove("is-open");
+            }
           }
         });
         el.escanerSelectCamara.addEventListener("change", () => {
@@ -5792,15 +6007,20 @@
          ======================================================================= */
       (async function iniciarAplicacion() {
         try {
-          if (!localStorage.getItem("minimarket_bolivia_reiniciado_v2")) {
+          if (!localStorage.getItem("minimarket_bolivia_reiniciado_v3")) {
             limpiarAlmacenamientoLocal();
-            localStorage.setItem("minimarket_bolivia_reiniciado_v2", "1");
+            localStorage.removeItem("minimarket_bolivia_reiniciado_v2");
+            localStorage.setItem("minimarket_bolivia_reiniciado_v3", "1");
           }
           estadoUI.adminDesbloqueado = sessionStorage.getItem(CLAVE_SESION_ADMIN) === "1";
+          const qrGuardado = leerQrCobroLocal();
+          estadoUI.qrCobroDataUrl = qrGuardado.dataUrl;
+          estadoUI.qrCobroNombre = qrGuardado.nombre;
         } catch (_err) {
           // Ignorar si almacenamiento no está disponible
         }
         actualizarEstadoCandadoUI();
+        renderizarPanelQrPOS();
         inicializarEventos();
         await sincronizarDesdeSupabase();
         refrescarTodo();

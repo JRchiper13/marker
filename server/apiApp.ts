@@ -534,7 +534,11 @@ export function crearAppApi(): Express {
     }
 
     const sucursalId = String(req.body?.sucursalId ?? 'sucursal-principal').trim();
-    const metodoPago = String(req.body?.metodoPago ?? 'Efectivo').trim();
+    const metodoPagoRaw = String(req.body?.metodoPago ?? 'Efectivo').trim();
+    if (metodoPagoRaw !== 'Efectivo' && metodoPagoRaw !== 'QR') {
+      return res.status(400).json({ error: 'Método de pago no válido. Solo se admite Efectivo o QR.' });
+    }
+    const metodoPago = metodoPagoRaw;
     const items = Array.isArray(req.body?.items) ? (req.body.items as ItemVentaEntrada[]) : [];
 
     if (items.length === 0) {

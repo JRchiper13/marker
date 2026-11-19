@@ -58,6 +58,19 @@ interface VentaFilaDB {
   metodo_pago: string;
 }
 
+interface MovimientoInvFilaDB {
+  id: string;
+  fecha: string;
+  sucursal_id: string;
+  producto_id: string;
+  producto_nombre: string;
+  tipo: 'entrada' | 'salida' | 'ajuste';
+  cantidad: number;
+  stock_anterior: number;
+  stock_nuevo: number;
+  motivo: string | null;
+}
+
 let clienteSupabase: SupabaseClient | null = null;
 
 function obtenerClienteSupabase(): SupabaseClient | null {
@@ -121,6 +134,21 @@ function mapearFilaAVenta(fila: VentaFilaDB) {
     items: Array.isArray(fila.items) ? fila.items : [],
     total: Number(fila.total),
     metodoPago: fila.metodo_pago,
+  };
+}
+
+function mapearFilaAMovimiento(fila: MovimientoInvFilaDB) {
+  return {
+    id: fila.id,
+    fecha: fila.fecha,
+    sucursalId: fila.sucursal_id,
+    productoId: fila.producto_id,
+    productoNombre: fila.producto_nombre,
+    tipo: fila.tipo,
+    cantidad: Number(fila.cantidad),
+    stockAnterior: Number(fila.stock_anterior),
+    stockNuevo: Number(fila.stock_nuevo),
+    motivo: fila.motivo ?? '',
   };
 }
 
@@ -616,6 +644,160 @@ export function crearAppApi(): Express {
     } catch (err) {
       console.error('Excepción en POST /api/ventas:', err);
       return res.status(500).json({ error: 'Error interno al procesar la venta.' });
+    }
+  });
+
+  // =========================================================================
+  // INVENTARIO (MOVIMIENTOS Y AJUSTES DE STOCK)
+  // =========================================================================
+
+  app.get('/api/inventario/movimientos', async (req: Request, res: Response) => {
+    const supabase = obtenerClienteSupabase();
+    if (!supabase) {
+      return res.status(503).json({
+        code: 'SUPABASE_NOT_CONFIGURED',
+        error: 'Supabase no configurado en variables de entorno.',
+      });
+    }
+
+    try {
+      const sucursalId = String(req.query.sucursalId ?? 'todas');
+      let query = supabase
+        .from('movimientos_inventario')
+        .select('*')
+        .order('fecha', { ascending: false })
+        .limit(100);
+
+      if (sucursalId && sucursalId !== 'todas') {
+        query = query.eq('sucursal_id', sucursalId);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        if (error.code === '42P01' || error.code === 'PGRST205') {
+          return res.json([]);
+        }
+        console.error('Error al leer movimientos de inventario:', error);
+        return res.status(500).json({ error: 'No se pudieron obtener los movimientos de inventario.' });
+      }
+
+      return res.json(((data ?? []) as MovimientoInvFilaDB[]).map(mapearFilaAMovimiento));
+    } catch (err) {
+      console.error('Excepción en GET /api/inventario/movimientos:', err);
+      return res.status(500).json({ error: 'Error interno al consultar movimientos.' });
+    }
+  });
+
+  app.post('/api/inventario/movimientos', async (req: Request, res: Response) => {
+    const supabase = obtenerClienteSupabase();
+    if (!supabase) {
+      return res.status(503).json({
+        code: 'SUPABASE_NOT_CONFIGURED',
+        error: 'Supabase no configurado en variables de entorno.',
+      });
+    }
+
+    const productoId = String(req.body?.productoId ?? '').trim();
+    const tipo = String(req.body?.tipo ?? '').trim() as 'entrada' | 'salida' | 'ajuste';
+    const cantidad = Number(req.body?.cantidad);
+    const motivo = String(req.body?.motivo ?? '').trim();
+
+    if (!productoId) {
+      return res.status(400).json({ error: 'Selecciona un producto válido.' });
+    }
+    if (!['entrada', 'salida', 'ajuste'].includes(tipo)) {
+      return res.status(400).json({ error: 'Tipo de movimiento inválido.' });
+    }
+    if (!Number.isInteger(cantidad) || cantidad < 0 || (tipo !== 'ajuste' && cantidad === 0)) {
+      return res.status(400).json({
+        error:
+          tipo === 'ajuste'
+            ? 'El nuevo stock contado debe ser un entero mayor o igual a 0.'
+            : 'La cantidad debe ser un entero mayor a 0.',
+      });
+    }
+
+    try {
+      const { data: prodActual, error: errFetch } = await supabase
+        .from('productos')
+        .select('*')
+        .eq('id', productoId)
+        .single();
+
+      if (errFetch || !prodActual) {
+        return res.status(404).json({ error: 'Producto no encontrado en Supabase.' });
+      }
+
+      const prod = prodActual as ProductoFilaDB;
+      const stockAnterior = Number(prod.stock_actual);
+      let stockNuevo = stockAnterior;
+
+      if (tipo === 'entrada') {
+        stockNuevo = stockAnterior + cantidad;
+      } else if (tipo === 'salida') {
+        if (cantidad > stockAnterior) {
+          return res.status(409).json({
+            error: `No puedes descontar ${cantidad} unidades. Stock actual: ${stockAnterior}.`,
+          });
+        }
+        stockNuevo = stockAnterior - cantidad;
+      } else {
+        stockNuevo = cantidad;
+      }
+
+      const { data: updated, error: errUpd } = await supabase
+        .from('productos')
+        .update({
+          stock_actual: stockNuevo,
+          actualizado_fecha: new Date().toISOString(),
+        })
+        .eq('id', productoId)
+        .select()
+        .single();
+
+      if (errUpd || !updated) {
+        console.error('Error actualizando stock en inventario:', errUpd);
+        return res.status(500).json({ error: 'No se pudo actualizar el stock del producto.' });
+      }
+
+      const { data: movInsertado, error: errMov } = await supabase
+        .from('movimientos_inventario')
+        .insert({
+          sucursal_id: prod.sucursal_id,
+          producto_id: prod.id,
+          producto_nombre: prod.nombre,
+          tipo,
+          cantidad,
+          stock_anterior: stockAnterior,
+          stock_nuevo: stockNuevo,
+          motivo,
+        })
+        .select()
+        .single();
+
+      const movimientoRespuesta =
+        !errMov && movInsertado
+          ? mapearFilaAMovimiento(movInsertado as MovimientoInvFilaDB)
+          : {
+              id: `mov_${Date.now()}`,
+              fecha: new Date().toISOString(),
+              sucursalId: prod.sucursal_id,
+              productoId: prod.id,
+              productoNombre: prod.nombre,
+              tipo,
+              cantidad,
+              stockAnterior,
+              stockNuevo,
+              motivo,
+            };
+
+      return res.status(201).json({
+        productoActualizado: mapearFilaAProducto(updated as ProductoFilaDB),
+        movimiento: movimientoRespuesta,
+      });
+    } catch (err) {
+      console.error('Excepción en POST /api/inventario/movimientos:', err);
+      return res.status(500).json({ error: 'Error interno al registrar el movimiento.' });
     }
   });
 

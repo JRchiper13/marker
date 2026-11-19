@@ -74,10 +74,28 @@ before update on public.productos
 for each row
 execute function public.actualizar_timestamp_producto();
 
+-- 4. Tabla de movimientos de inventario (Kardex: entradas, salidas y ajustes)
+create table if not exists public.movimientos_inventario (
+  id uuid primary key default gen_random_uuid(),
+  fecha timestamptz not null default now(),
+  sucursal_id text not null references public.sucursales(id) on update cascade,
+  producto_id uuid not null references public.productos(id) on delete cascade,
+  producto_nombre text not null,
+  tipo text not null check (tipo in ('entrada', 'salida', 'ajuste')),
+  cantidad integer not null check (cantidad >= 0),
+  stock_anterior integer not null check (stock_anterior >= 0),
+  stock_nuevo integer not null check (stock_nuevo >= 0),
+  motivo text default ''
+);
+
+create index if not exists idx_mov_inv_sucursal_fecha on public.movimientos_inventario (sucursal_id, fecha desc);
+create index if not exists idx_mov_inv_producto on public.movimientos_inventario (producto_id);
+
 -- Políticas RLS básicas (ajustar si agregas autenticación de usuarios en el futuro)
 alter table public.sucursales enable row level security;
 alter table public.productos enable row level security;
 alter table public.ventas enable row level security;
+alter table public.movimientos_inventario enable row level security;
 
 drop policy if exists "Acceso completo sucursales" on public.sucursales;
 create policy "Acceso completo sucursales"
@@ -94,5 +112,11 @@ create policy "Acceso completo productos"
 drop policy if exists "Acceso completo ventas" on public.ventas;
 create policy "Acceso completo ventas"
   on public.ventas for all
+  using (true)
+  with check (true);
+
+drop policy if exists "Acceso completo movimientos inventario" on public.movimientos_inventario;
+create policy "Acceso completo movimientos inventario"
+  on public.movimientos_inventario for all
   using (true)
   with check (true);

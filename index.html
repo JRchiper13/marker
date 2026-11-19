@@ -1472,7 +1472,6 @@
               </svg>
               <span>Inventario</span>
             </span>
-            <span class="nav-item-hint">Pronto</span>
           </button>
 
           <button type="button" class="nav-item" data-section="sucursales">
@@ -2124,27 +2123,249 @@
           </section>
 
           <!-- =================================================================
-               SECCIÓN 3: INVENTARIO (PANTALLA PRÓXIMAMENTE)
+               SECCIÓN 3: INVENTARIO (CONTROL DE STOCK Y KARDEX)
                ================================================================= -->
-          <section id="seccion-inventario" class="view-section" aria-label="Inventario">
-            <div class="coming-soon-card">
-              <div class="coming-soon-icon" aria-hidden="true">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
-                  <rect x="9" y="3" width="6" height="4" rx="1" />
-                  <path d="M9 12h6" />
-                  <path d="M9 16h6" />
-                </svg>
-              </div>
-              <span class="coming-soon-label">Próximamente</span>
-              <h2>Control avanzado de inventario</h2>
-              <p>
-                Aquí podrás registrar ingresos de mercadería por factura, ajustes por merma o vencimiento, conteos físicos por pasillo y movimientos completos de kardex por sucursal.
-              </p>
-              <button type="button" class="btn btn-secondary" data-go-section="productos">
-                Volver a Productos
-              </button>
+          <section id="seccion-inventario" class="view-section" aria-label="Control de inventario">
+            <div id="invToast" class="toast-banner" role="status" aria-live="polite">
+              <span id="invToastMessage"></span>
+              <button type="button" id="btnCerrarInvToast" class="btn btn-secondary btn-sm">Cerrar</button>
             </div>
+
+            <!-- Tarjetas resumen de inventario -->
+            <div class="kpi-grid" aria-label="Resumen de existencias">
+              <article class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-label">Unidades en stock</span>
+                  <svg class="kpi-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                  </svg>
+                </div>
+                <div id="invTotalUnidades" class="kpi-value tabular-nums">0</div>
+                <div id="invTotalProductosSub" class="kpi-subtext">0 productos en sucursal</div>
+              </article>
+
+              <article id="invCardSinStock" class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-label">Productos agotados</span>
+                  <svg class="kpi-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="15" y1="9" x2="9" y2="15" />
+                    <line x1="9" y1="9" x2="15" y2="15" />
+                  </svg>
+                </div>
+                <div id="invSinStock" class="kpi-value tabular-nums">0</div>
+                <div class="kpi-subtext">Stock igual a 0 unidades</div>
+              </article>
+
+              <article id="invCardStockBajo" class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-label">Stock bajo el mínimo</span>
+                  <svg class="kpi-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                </div>
+                <div id="invStockBajo" class="kpi-value tabular-nums">0</div>
+                <div class="kpi-subtext">Necesitan reposición</div>
+              </article>
+
+              <article id="invCardPorVencer" class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-label">Por vencer / vencidos</span>
+                  <svg class="kpi-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                </div>
+                <div id="invPorVencer" class="kpi-value tabular-nums">0</div>
+                <div class="kpi-subtext">Revisar lotes en góndola</div>
+              </article>
+            </div>
+
+            <!-- Formulario de movimiento / ajuste de inventario -->
+            <section class="panel" aria-labelledby="tituloFormInventario">
+              <div class="panel-header">
+                <div>
+                  <h2 id="tituloFormInventario" class="panel-title">Registrar entrada, salida o conteo físico</h2>
+                  <p class="panel-subtitle">Actualiza las existencias al recibir mercadería, retirar mermas o hacer inventario en pasillo.</p>
+                </div>
+              </div>
+              <div class="panel-body">
+                <form id="formInventarioMovimiento" novalidate>
+                  <div class="form-grid">
+                    <div class="field-group">
+                      <label for="invProductoSelect" class="field-label">
+                        <span>Producto <span class="required-mark">*</span></span>
+                        <span class="field-hint-inline">O selecciona con cámara</span>
+                      </label>
+                      <div class="barcode-input-row">
+                        <select id="invProductoSelect" class="select-control" required></select>
+                        <button
+                          type="button"
+                          id="btnInvEscanearCamara"
+                          class="btn-scan"
+                          title="Escanear código de barras para seleccionar producto"
+                        >
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+                            <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+                            <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+                            <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+                            <line x1="7" y1="12" x2="17" y2="12" />
+                          </svg>
+                          <span>Escanear</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="field-group">
+                      <label for="invTipoMovimiento" class="field-label">Tipo de movimiento <span class="required-mark">*</span></label>
+                      <select id="invTipoMovimiento" class="select-control" required>
+                        <option value="entrada">Entrada (Reposición / Compra)</option>
+                        <option value="salida">Salida (Merma / Vencido / Retiro)</option>
+                        <option value="ajuste">Ajuste (Conteo físico exacto)</option>
+                      </select>
+                    </div>
+
+                    <div class="field-group">
+                      <label for="invCantidadMovimiento" class="field-label">
+                        <span id="invCantidadLabel">Cantidad a ingresar <span class="required-mark">*</span></span>
+                        <span id="invStockActualHint" class="field-hint-inline">Stock actual: —</span>
+                      </label>
+                      <input
+                        type="number"
+                        id="invCantidadMovimiento"
+                        class="input-control font-mono-num"
+                        min="0"
+                        step="1"
+                        placeholder="Ej. 12"
+                        required
+                      />
+                    </div>
+
+                    <div class="field-group">
+                      <label for="invMotivoMovimiento" class="field-label">
+                        <span>Motivo o referencia</span>
+                        <span class="field-hint-inline">Opcional</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="invMotivoMovimiento"
+                        class="input-control"
+                        placeholder="Ej. Factura proveedor #412, merma por rotura"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="form-actions">
+                    <button type="submit" id="btnGuardarMovimiento" class="btn btn-primary">
+                      Aplicar movimiento de stock
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </section>
+
+            <!-- Tabla de existencias actuales con ajuste rápido -->
+            <section class="panel" aria-labelledby="tituloTablaInventario">
+              <div class="panel-header">
+                <div>
+                  <h2 id="tituloTablaInventario" class="panel-title">Existencias por producto</h2>
+                  <p class="panel-subtitle">Controla el stock disponible y aplica ajustes rápidos desde la tienda.</p>
+                </div>
+              </div>
+
+              <div class="table-toolbar">
+                <div class="search-wrap">
+                  <svg class="search-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <input
+                    type="search"
+                    id="invBusqueda"
+                    class="input-control"
+                    placeholder="Buscar por nombre o código de barras..."
+                    aria-label="Buscar en inventario"
+                  />
+                </div>
+
+                <select id="invFiltroEstado" class="select-control" aria-label="Filtrar por estado de stock">
+                  <option value="todos">Todos los estados</option>
+                  <option value="critico">Stock bajo o agotado</option>
+                  <option value="vencer">Por vencer o vencidos</option>
+                  <option value="ok">Stock saludable</option>
+                </select>
+
+                <select id="invFiltroCategoria" class="select-control" aria-label="Filtrar inventario por categoría">
+                  <option value="todas">Todas las categorías</option>
+                  <option value="Bebidas">Bebidas</option>
+                  <option value="Snacks">Snacks</option>
+                  <option value="Lácteos">Lácteos</option>
+                  <option value="Abarrotes">Abarrotes</option>
+                  <option value="Limpieza">Limpieza</option>
+                  <option value="Higiene personal">Higiene personal</option>
+                  <option value="Panadería">Panadería</option>
+                  <option value="Otros">Otros</option>
+                </select>
+              </div>
+
+              <div class="table-scroll">
+                <table class="products-table">
+                  <thead>
+                    <tr>
+                      <th>Producto / SKU</th>
+                      <th>Categoría</th>
+                      <th class="is-num">Stock actual</th>
+                      <th class="is-num">Stock mínimo</th>
+                      <th class="is-num">Valor costo</th>
+                      <th>Vencimiento</th>
+                      <th>Ajuste rápido</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tablaInventarioBody"></tbody>
+                </table>
+              </div>
+
+              <div id="invEstadoVacio" class="empty-state" style="display: none">
+                <h3>No hay productos para mostrar</h3>
+                <p>Cambia los filtros o registra productos desde la sección Productos.</p>
+              </div>
+            </section>
+
+            <!-- Historial de movimientos recientes (Kardex) -->
+            <section class="panel" aria-labelledby="tituloKardex">
+              <div class="panel-header">
+                <div>
+                  <h2 id="tituloKardex" class="panel-title">Historial reciente de movimientos</h2>
+                  <p class="panel-subtitle">Registro de ingresos, salidas y conteos físicos realizados.</p>
+                </div>
+              </div>
+
+              <div class="table-scroll">
+                <table class="products-table" style="min-width: 680px">
+                  <thead>
+                    <tr>
+                      <th>Fecha y hora</th>
+                      <th>Producto</th>
+                      <th>Tipo</th>
+                      <th class="is-num">Cantidad</th>
+                      <th class="is-num">Stock (Ant. → Nuevo)</th>
+                      <th>Motivo</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tablaMovimientosBody"></tbody>
+                </table>
+              </div>
+
+              <div id="invMovimientosVacio" class="empty-state" style="display: none">
+                <h3>Sin movimientos registrados</h3>
+                <p>Cuando registres una entrada, salida o conteo físico aparecerá aquí.</p>
+              </div>
+            </section>
           </section>
 
           <!-- =================================================================
@@ -2436,6 +2657,7 @@
       const CLAVE_LOCAL_PRODUCTOS = "minimarket_bolivia_productos_v1";
       const CLAVE_LOCAL_VENTAS = "minimarket_bolivia_ventas_v1";
       const CLAVE_LOCAL_SUCURSALES = "minimarket_bolivia_sucursales_v1";
+      const CLAVE_LOCAL_MOVIMIENTOS = "minimarket_bolivia_movimientos_v1";
       let usandoRespaldoLocal = false;
 
       const sucursalesPorDefecto = [
@@ -2535,6 +2757,7 @@
         sucursales: [...sucursalesPorDefecto],
         productos: [],
         ventas: [],
+        movimientos: [],
       };
 
       function leerListaLocal(clave, porDefecto) {
@@ -2581,15 +2804,17 @@
 
       async function sincronizarDesdeSupabase() {
         try {
-          const [respSuc, respProd, respVentas] = await Promise.all([
+          const [respSuc, respProd, respVentas, respMovs] = await Promise.all([
             fetch("/api/sucursales"),
             fetch("/api/productos"),
             fetch("/api/ventas"),
+            fetch("/api/inventario/movimientos"),
           ]);
 
           const parsedSuc = await leerJsonSeguro(respSuc);
           const parsedProd = await leerJsonSeguro(respProd);
           const parsedVentas = await leerJsonSeguro(respVentas);
+          const parsedMovs = await leerJsonSeguro(respMovs);
 
           // Si el servidor responde HTML (p. ej. vista estática sin backend) o 503 sin credenciales,
           // usamos respaldo en localStorage sin mostrar error.
@@ -2602,6 +2827,7 @@
             baseDatosMemoria.sucursales = leerListaLocal(CLAVE_LOCAL_SUCURSALES, sucursalesPorDefecto);
             baseDatosMemoria.productos = leerProductosLocales();
             baseDatosMemoria.ventas = leerListaLocal(CLAVE_LOCAL_VENTAS, []);
+            baseDatosMemoria.movimientos = leerListaLocal(CLAVE_LOCAL_MOVIMIENTOS, []);
             actualizarSelectoresSucursal();
             return;
           }
@@ -2623,12 +2849,17 @@
             respVentas.ok && parsedVentas.esJson && Array.isArray(parsedVentas.data)
               ? parsedVentas.data
               : [];
+          baseDatosMemoria.movimientos =
+            respMovs.ok && parsedMovs.esJson && Array.isArray(parsedMovs.data)
+              ? parsedMovs.data
+              : [];
           actualizarSelectoresSucursal();
         } catch (error) {
           usandoRespaldoLocal = true;
           baseDatosMemoria.sucursales = leerListaLocal(CLAVE_LOCAL_SUCURSALES, sucursalesPorDefecto);
           baseDatosMemoria.productos = leerProductosLocales();
           baseDatosMemoria.ventas = leerListaLocal(CLAVE_LOCAL_VENTAS, []);
+          baseDatosMemoria.movimientos = leerListaLocal(CLAVE_LOCAL_MOVIMIENTOS, []);
           actualizarSelectoresSucursal();
 
           if (window.location.protocol !== "file:") {
@@ -2883,6 +3114,80 @@
         return nueva;
       }
 
+      async function registrarMovimientoInventario({ productoId, tipo, cantidad, motivo }) {
+        if (!usandoRespaldoLocal) {
+          const resp = await fetch("/api/inventario/movimientos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ productoId, tipo, cantidad, motivo }),
+          });
+          const { esJson, data: body } = await leerJsonSeguro(resp);
+          if (!esJson || (resp.status === 503 && body && body.code === "SUPABASE_NOT_CONFIGURED")) {
+            usandoRespaldoLocal = true;
+          } else if (!resp.ok) {
+            throw new Error((body && body.error) || "No se pudo registrar el movimiento de stock.");
+          } else {
+            if (body.productoActualizado) {
+              const idx = baseDatosMemoria.productos.findIndex(
+                (p) => p.id === body.productoActualizado.id
+              );
+              if (idx !== -1) baseDatosMemoria.productos[idx] = body.productoActualizado;
+            }
+            if (body.movimiento) {
+              baseDatosMemoria.movimientos.unshift(body.movimiento);
+            }
+            return body.movimiento;
+          }
+        }
+
+        const prod = baseDatosMemoria.productos.find((p) => p.id === productoId);
+        if (!prod) throw new Error("El producto seleccionado ya no existe.");
+
+        const cantNum = Number(cantidad);
+        if (!Number.isInteger(cantNum) || cantNum < 0 || (tipo !== "ajuste" && cantNum === 0)) {
+          throw new Error(
+            tipo === "ajuste"
+              ? "El stock contado debe ser un número entero mayor o igual a 0."
+              : "La cantidad debe ser un entero mayor a 0."
+          );
+        }
+
+        const stockAnterior = Number(prod.stockActual);
+        let stockNuevo = stockAnterior;
+        if (tipo === "entrada") {
+          stockNuevo = stockAnterior + cantNum;
+        } else if (tipo === "salida") {
+          if (cantNum > stockAnterior) {
+            throw new Error(
+              `No puedes retirar ${cantNum} unidades. Stock disponible: ${stockAnterior}.`
+            );
+          }
+          stockNuevo = stockAnterior - cantNum;
+        } else {
+          stockNuevo = cantNum;
+        }
+
+        prod.stockActual = stockNuevo;
+        prod.actualizadoFecha = new Date().toISOString();
+        guardarProductosLocales(baseDatosMemoria.productos);
+
+        const nuevoMov = {
+          id: `mov_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+          fecha: new Date().toISOString(),
+          sucursalId: prod.sucursalId,
+          productoId: prod.id,
+          productoNombre: prod.nombre,
+          tipo,
+          cantidad: cantNum,
+          stockAnterior,
+          stockNuevo,
+          motivo: motivo || "",
+        };
+        baseDatosMemoria.movimientos.unshift(nuevoMov);
+        guardarListaLocal(CLAVE_LOCAL_MOVIMIENTOS, baseDatosMemoria.movimientos);
+        return nuevoMov;
+      }
+
       /* =======================================================================
          3. ESTRUCTURA PREPARADA PARA VENTAS Y ESCÁNER DE CÁMARA
          ======================================================================= */
@@ -3015,6 +3320,34 @@
         escanerFeedback: document.getElementById("escanerFeedback"),
         btnCerrarEscaner: document.getElementById("btnCerrarEscaner"),
         btnCerrarEscanerPie: document.getElementById("btnCerrarEscanerPie"),
+        // Inventario
+        invToast: document.getElementById("invToast"),
+        invToastMessage: document.getElementById("invToastMessage"),
+        btnCerrarInvToast: document.getElementById("btnCerrarInvToast"),
+        invTotalUnidades: document.getElementById("invTotalUnidades"),
+        invTotalProductosSub: document.getElementById("invTotalProductosSub"),
+        invCardSinStock: document.getElementById("invCardSinStock"),
+        invSinStock: document.getElementById("invSinStock"),
+        invCardStockBajo: document.getElementById("invCardStockBajo"),
+        invStockBajo: document.getElementById("invStockBajo"),
+        invCardPorVencer: document.getElementById("invCardPorVencer"),
+        invPorVencer: document.getElementById("invPorVencer"),
+        formInventarioMovimiento: document.getElementById("formInventarioMovimiento"),
+        invProductoSelect: document.getElementById("invProductoSelect"),
+        btnInvEscanearCamara: document.getElementById("btnInvEscanearCamara"),
+        invTipoMovimiento: document.getElementById("invTipoMovimiento"),
+        invCantidadLabel: document.getElementById("invCantidadLabel"),
+        invStockActualHint: document.getElementById("invStockActualHint"),
+        invCantidadMovimiento: document.getElementById("invCantidadMovimiento"),
+        invMotivoMovimiento: document.getElementById("invMotivoMovimiento"),
+        btnGuardarMovimiento: document.getElementById("btnGuardarMovimiento"),
+        invBusqueda: document.getElementById("invBusqueda"),
+        invFiltroEstado: document.getElementById("invFiltroEstado"),
+        invFiltroCategoria: document.getElementById("invFiltroCategoria"),
+        tablaInventarioBody: document.getElementById("tablaInventarioBody"),
+        invEstadoVacio: document.getElementById("invEstadoVacio"),
+        tablaMovimientosBody: document.getElementById("tablaMovimientosBody"),
+        invMovimientosVacio: document.getElementById("invMovimientosVacio"),
         // Ventas, Sucursales y Reportes
         posToast: document.getElementById("posToast"),
         posToastMessage: document.getElementById("posToastMessage"),
@@ -3070,6 +3403,7 @@
 
         // Actualizar vistas cuando se entra a ellas
         if (nombreSeccion === "ventas") renderizarPOS();
+        if (nombreSeccion === "inventario") renderizarInventario();
         if (nombreSeccion === "sucursales") renderizarSucursalesMaqueta();
         if (nombreSeccion === "reportes") renderizarReportesMaqueta();
       }
@@ -3545,12 +3879,220 @@
         actualizarKPIs();
         renderizarTablaProductos();
         if (estadoUI.seccionActiva === "ventas") renderizarPOS();
+        if (estadoUI.seccionActiva === "inventario") renderizarInventario();
         if (estadoUI.seccionActiva === "reportes") renderizarReportesMaqueta();
       }
 
       /* =======================================================================
          8. PUNTO DE VENTA (VENTAS), SUCURSALES Y REPORTES
          ======================================================================= */
+
+      let timerInvToast = null;
+      function mostrarMensajeInventario(mensaje, esError = false) {
+        el.invToastMessage.textContent = mensaje;
+        el.invToast.classList.toggle("is-error", Boolean(esError));
+        el.invToast.classList.add("is-visible");
+        clearTimeout(timerInvToast);
+        timerInvToast = setTimeout(() => {
+          el.invToast.classList.remove("is-visible");
+        }, 5500);
+      }
+
+      function formatearFechaHoraLocal(fechaISO) {
+        if (!fechaISO) return "—";
+        const d = new Date(fechaISO);
+        if (Number.isNaN(d.getTime())) return String(fechaISO);
+        const dia = String(d.getDate()).padStart(2, "0");
+        const mes = String(d.getMonth() + 1).padStart(2, "0");
+        const anio = d.getFullYear();
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mm = String(d.getMinutes()).padStart(2, "0");
+        return `${dia}/${mes}/${anio} ${hh}:${mm}`;
+      }
+
+      function actualizarHintStockInventario() {
+        const prod = obtenerProductoPorId(el.invProductoSelect.value);
+        el.invStockActualHint.textContent = prod
+          ? `Stock actual: ${prod.stockActual} ${prod.unidad}`
+          : "Stock actual: —";
+
+        const tipo = el.invTipoMovimiento.value;
+        if (tipo === "entrada") {
+          el.invCantidadLabel.innerHTML = 'Cantidad a ingresar <span class="required-mark">*</span>';
+        } else if (tipo === "salida") {
+          el.invCantidadLabel.innerHTML = 'Cantidad a descontar <span class="required-mark">*</span>';
+        } else {
+          el.invCantidadLabel.innerHTML = 'Stock real contado <span class="required-mark">*</span>';
+        }
+      }
+
+      function renderizarInventario() {
+        const productosSucursal = obtenerProductos({ sucursalId: estadoUI.sucursalActiva });
+
+        let totalUnidades = 0;
+        let sinStock = 0;
+        let stockBajo = 0;
+        let porVencer = 0;
+
+        productosSucursal.forEach((p) => {
+          totalUnidades += Number(p.stockActual || 0);
+          if (p.stockActual === 0) sinStock += 1;
+          if (p.stockActual < p.stockMinimo) stockBajo += 1;
+          const dias = diasHastaVencimiento(p.fechaVencimiento);
+          if (dias !== null && dias < 30) porVencer += 1;
+        });
+
+        el.invTotalUnidades.textContent = String(totalUnidades);
+        el.invTotalProductosSub.textContent = `${productosSucursal.length} producto${productosSucursal.length === 1 ? "" : "s"} en sucursal`;
+        el.invSinStock.textContent = String(sinStock);
+        el.invStockBajo.textContent = String(stockBajo);
+        el.invPorVencer.textContent = String(porVencer);
+
+        el.invCardSinStock.classList.toggle("is-alert", sinStock > 0);
+        el.invCardStockBajo.classList.toggle("is-alert", stockBajo > 0);
+        el.invCardPorVencer.classList.toggle("is-alert", porVencer > 0);
+
+        // Poblar selector de producto en el formulario de movimiento
+        const valorPrevio = el.invProductoSelect.value;
+        if (productosSucursal.length === 0) {
+          el.invProductoSelect.innerHTML = '<option value="">No hay productos registrados</option>';
+        } else {
+          el.invProductoSelect.innerHTML = productosSucursal
+            .map(
+              (p) =>
+                `<option value="${escaparHTML(p.id)}">${escaparHTML(p.nombre)} (${escaparHTML(
+                  p.codigoBarras
+                )}) · Stock: ${p.stockActual}</option>`
+            )
+            .join("");
+          if (productosSucursal.some((p) => p.id === valorPrevio)) {
+            el.invProductoSelect.value = valorPrevio;
+          }
+        }
+        actualizarHintStockInventario();
+
+        // Filtrar tabla de existencias
+        const filtroEstado = el.invFiltroEstado.value;
+        const filtrados = obtenerProductos({
+          busqueda: el.invBusqueda.value,
+          categoria: el.invFiltroCategoria.value,
+          sucursalId: estadoUI.sucursalActiva,
+        }).filter((p) => {
+          const dias = diasHastaVencimiento(p.fechaVencimiento);
+          const esCritico = p.stockActual === 0 || p.stockActual < p.stockMinimo;
+          const esVencer = dias !== null && dias < 30;
+          if (filtroEstado === "critico") return esCritico;
+          if (filtroEstado === "vencer") return esVencer;
+          if (filtroEstado === "ok") return !esCritico && !esVencer;
+          return true;
+        });
+
+        if (filtrados.length === 0) {
+          el.tablaInventarioBody.innerHTML = "";
+          el.invEstadoVacio.style.display = "block";
+        } else {
+          el.invEstadoVacio.style.display = "none";
+          el.tablaInventarioBody.innerHTML = filtrados
+            .map((p) => {
+              const dias = diasHastaVencimiento(p.fechaVencimiento);
+              const vencido = dias !== null && dias < 0;
+              const proxVencer = dias !== null && dias >= 0 && dias < 30;
+              const agotado = p.stockActual === 0;
+              const bajo = p.stockActual < p.stockMinimo;
+
+              let claseFila = "";
+              if (agotado || vencido) claseFila = "row-danger";
+              else if (bajo || proxVencer) claseFila = "row-warning";
+
+              const valorCosto = p.stockActual * p.precioCompra;
+              const notaStock = agotado
+                ? '<span class="alert-note is-danger">Agotado</span>'
+                : bajo
+                ? '<span class="alert-note is-warning">Stock bajo</span>'
+                : "";
+              const notaVenc = vencido
+                ? '<span class="alert-note is-danger">Vencido</span>'
+                : proxVencer
+                ? `<span class="alert-note is-warning">Vence en ${dias} d.</span>`
+                : "";
+
+              return `
+                <tr class="${claseFila}">
+                  <td>
+                    <div class="product-name">${escaparHTML(p.nombre)}</div>
+                    <div class="product-meta font-mono-num">${escaparHTML(p.codigoBarras)}${
+                      p.marca ? ` · ${escaparHTML(p.marca)}` : ""
+                    }</div>
+                  </td>
+                  <td>${escaparHTML(p.categoria)}</td>
+                  <td class="is-num font-mono-num">
+                    <strong>${p.stockActual}</strong> ${escaparHTML(p.unidad)}
+                    ${notaStock}
+                  </td>
+                  <td class="is-num font-mono-num">${p.stockMinimo}</td>
+                  <td class="is-num font-mono-num">${formatearMoneda(valorCosto)}</td>
+                  <td>
+                    ${formatearFecha(p.fechaVencimiento)}
+                    ${notaVenc}
+                  </td>
+                  <td>
+                    <div class="row-actions">
+                      <button type="button" class="btn btn-secondary btn-sm" data-inv-op="entrada" data-id="${escaparHTML(
+                        p.id
+                      )}" title="Sumar 1 unidad">+1</button>
+                      <button type="button" class="btn btn-secondary btn-sm" data-inv-op="salida" data-id="${escaparHTML(
+                        p.id
+                      )}" ${p.stockActual <= 0 ? "disabled" : ""} title="Restar 1 unidad">−1</button>
+                      <button type="button" class="btn btn-secondary btn-sm" data-inv-op="seleccionar" data-id="${escaparHTML(
+                        p.id
+                      )}">Ajustar</button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            })
+            .join("");
+        }
+
+        // Renderizar Kardex de movimientos recientes
+        const movs = baseDatosMemoria.movimientos.filter(
+          (m) => estadoUI.sucursalActiva === "todas" || m.sucursalId === estadoUI.sucursalActiva
+        );
+
+        if (movs.length === 0) {
+          el.tablaMovimientosBody.innerHTML = "";
+          el.invMovimientosVacio.style.display = "block";
+        } else {
+          el.invMovimientosVacio.style.display = "none";
+          const etiquetaTipo = {
+            entrada: "Entrada",
+            salida: "Salida",
+            ajuste: "Conteo",
+          };
+          el.tablaMovimientosBody.innerHTML = movs
+            .slice(0, 30)
+            .map((m) => {
+              const colorTipo =
+                m.tipo === "entrada"
+                  ? "var(--green-primary)"
+                  : m.tipo === "salida"
+                  ? "var(--red-accent)"
+                  : "var(--orange-strong)";
+              const signo = m.tipo === "entrada" ? "+" : m.tipo === "salida" ? "−" : "=";
+              return `
+                <tr>
+                  <td class="font-mono-num">${escaparHTML(formatearFechaHoraLocal(m.fecha))}</td>
+                  <td><strong>${escaparHTML(m.productoNombre)}</strong></td>
+                  <td><strong style="color: ${colorTipo}">${etiquetaTipo[m.tipo] || m.tipo}</strong></td>
+                  <td class="is-num font-mono-num">${signo}${m.cantidad}</td>
+                  <td class="is-num font-mono-num">${m.stockAnterior} → <strong>${m.stockNuevo}</strong></td>
+                  <td>${escaparHTML(m.motivo || "—")}</td>
+                </tr>
+              `;
+            })
+            .join("");
+        }
+      }
 
       let timerPosToast = null;
       function mostrarMensajePOS(mensaje, esError = false) {
@@ -4128,9 +4670,103 @@
           }
         });
 
-        // Escáner con cámara en formulario de productos y en Ventas (POS)
+        // Inventario: movimientos, filtros y ajuste rápido
+        el.btnCerrarInvToast.addEventListener("click", () => {
+          el.invToast.classList.remove("is-visible");
+        });
+        el.invProductoSelect.addEventListener("change", actualizarHintStockInventario);
+        el.invTipoMovimiento.addEventListener("change", actualizarHintStockInventario);
+        el.invBusqueda.addEventListener("input", renderizarInventario);
+        el.invFiltroEstado.addEventListener("change", renderizarInventario);
+        el.invFiltroCategoria.addEventListener("change", renderizarInventario);
+
+        el.formInventarioMovimiento.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const productoId = el.invProductoSelect.value;
+          const tipo = el.invTipoMovimiento.value;
+          const cantidad = parseInt(el.invCantidadMovimiento.value, 10);
+          const motivo = el.invMotivoMovimiento.value.trim();
+
+          if (!productoId) {
+            mostrarMensajeInventario("Selecciona un producto primero.", true);
+            return;
+          }
+          if (
+            !Number.isInteger(cantidad) ||
+            cantidad < 0 ||
+            (tipo !== "ajuste" && cantidad <= 0)
+          ) {
+            mostrarMensajeInventario(
+              tipo === "ajuste"
+                ? "Ingresa un stock contado válido (entero >= 0)."
+                : "Ingresa una cantidad entera mayor a 0.",
+              true
+            );
+            el.invCantidadMovimiento.focus();
+            return;
+          }
+
+          el.btnGuardarMovimiento.disabled = true;
+          el.btnGuardarMovimiento.textContent = "Aplicando...";
+          try {
+            const mov = await registrarMovimientoInventario({
+              productoId,
+              tipo,
+              cantidad,
+              motivo,
+            });
+            el.invCantidadMovimiento.value = "";
+            el.invMotivoMovimiento.value = "";
+            refrescarTodo();
+            mostrarMensajeInventario(
+              `Stock actualizado para "${mov.productoNombre}": ${mov.stockAnterior} → ${mov.stockNuevo}.`
+            );
+          } catch (error) {
+            mostrarMensajeInventario(error.message || "Error al actualizar inventario.", true);
+          } finally {
+            el.btnGuardarMovimiento.disabled = false;
+            el.btnGuardarMovimiento.textContent = "Aplicar movimiento de stock";
+          }
+        });
+
+        el.tablaInventarioBody.addEventListener("click", async (e) => {
+          const btn = e.target.closest("button[data-inv-op]");
+          if (!btn) return;
+          const op = btn.dataset.invOp;
+          const id = btn.dataset.id;
+
+          if (op === "seleccionar") {
+            el.invProductoSelect.value = id;
+            el.invTipoMovimiento.value = "ajuste";
+            actualizarHintStockInventario();
+            el.invCantidadMovimiento.focus();
+            el.formInventarioMovimiento.scrollIntoView({ behavior: "smooth", block: "start" });
+            return;
+          }
+
+          btn.disabled = true;
+          try {
+            const mov = await registrarMovimientoInventario({
+              productoId: id,
+              tipo: op,
+              cantidad: 1,
+              motivo: op === "entrada" ? "Ingreso rápido (+1)" : "Retiro rápido (−1)",
+            });
+            refrescarTodo();
+            mostrarMensajeInventario(
+              `${mov.productoNombre}: stock ${mov.stockAnterior} → ${mov.stockNuevo}.`
+            );
+          } catch (error) {
+            mostrarMensajeInventario(error.message || "No se pudo ajustar el stock.", true);
+          } finally {
+            btn.disabled = false;
+          }
+        });
+
+        // Escáner con cámara en formulario de productos, Ventas (POS) e Inventario
         el.btnEscanearCamara.addEventListener("click", () => abrirEscanerCamara("producto"));
         el.btnPosEscanearCamara.addEventListener("click", () => abrirEscanerCamara("ventas"));
+        el.btnInvEscanearCamara.addEventListener("click", () => abrirEscanerCamara("inventario"));
         el.btnCerrarEscaner.addEventListener("click", cerrarEscanerCamara);
         el.btnCerrarEscanerPie.addEventListener("click", cerrarEscanerCamara);
         el.modalEscaner.addEventListener("click", (e) => {
@@ -4346,6 +4982,24 @@
           return;
         }
 
+        if (estadoEscaner.modo === "inventario") {
+          const prodInv = obtenerProductos({ sucursalId: estadoUI.sucursalActiva }).find(
+            (p) => p.codigoBarras.toLowerCase() === codigo.toLowerCase()
+          );
+          if (!prodInv) {
+            mostrarFeedbackEscaner(`Código "${codigo}" no encontrado en esta sucursal.`, true);
+            return;
+          }
+          el.invProductoSelect.value = prodInv.id;
+          actualizarHintStockInventario();
+          cerrarEscanerCamara();
+          mostrarMensajeInventario(
+            `Producto seleccionado: ${prodInv.nombre} (Stock actual: ${prodInv.stockActual}).`
+          );
+          el.invCantidadMovimiento.focus();
+          return;
+        }
+
         // Modo "ventas": buscar producto activo y agregarlo al carrito
         const prod = obtenerProductos({ sucursalId: estadoUI.sucursalActiva }).find(
           (p) => p.activo && p.codigoBarras.toLowerCase() === codigo.toLowerCase()
@@ -4496,6 +5150,11 @@
           el.escanerSubtitulo.textContent =
             "Cada código detectado se agregará automáticamente al carrito.";
           el.btnCerrarEscanerPie.textContent = "Listo / Volver al carrito";
+        } else if (modo === "inventario") {
+          el.escanerTitulo.textContent = "Escanear producto para inventario";
+          el.escanerSubtitulo.textContent =
+            "Apunta la cámara al producto para seleccionarlo en el ajuste de stock.";
+          el.btnCerrarEscanerPie.textContent = "Cancelar";
         } else {
           el.escanerTitulo.textContent = "Escanear código de barras";
           el.escanerSubtitulo.textContent =

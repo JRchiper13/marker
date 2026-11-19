@@ -1101,6 +1101,81 @@
         color: var(--green-text);
       }
 
+      /* Calculadora de efectivo recibido y cambio en POS */
+      .pos-cash-panel {
+        margin-top: 14px;
+        padding: 14px;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        background-color: var(--bg-hover);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .pos-bills-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .btn-bill {
+        min-height: 36px;
+        padding: 6px 10px;
+        border: 1px solid var(--border-strong);
+        border-radius: var(--radius-sm);
+        background-color: var(--bg-surface);
+        color: var(--text-primary);
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color var(--transition-fast), border-color var(--transition-fast);
+      }
+
+      .btn-bill:hover:not(:disabled) {
+        border-color: var(--green-primary);
+        background-color: var(--green-soft);
+        color: var(--green-text);
+      }
+
+      .btn-bill:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .pos-change-box {
+        padding: 12px 14px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-subtle);
+        background-color: var(--bg-surface);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .pos-change-box.is-ok {
+        background-color: var(--green-soft);
+        border-color: var(--green-border);
+        color: var(--green-text);
+      }
+
+      .pos-change-box.is-short {
+        background-color: var(--red-soft);
+        border-color: var(--red-border);
+        color: var(--red-accent);
+      }
+
+      .pos-change-label {
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
+
+      .pos-change-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+      }
+
       /* Maqueta Próximamente genérica (Inventario) */
       .coming-soon-card {
         background-color: var(--bg-surface);
@@ -1440,7 +1515,7 @@
         </div>
 
         <nav class="sidebar-nav">
-          <button type="button" class="nav-item is-active" data-section="productos">
+          <button type="button" class="nav-item" data-section="productos">
             <span class="nav-item-left">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -1449,9 +1524,15 @@
               </svg>
               <span>Productos</span>
             </span>
+            <span class="nav-item-hint admin-lock-badge" title="Requiere contraseña" aria-label="Requiere contraseña">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </span>
           </button>
 
-          <button type="button" class="nav-item" data-section="ventas">
+          <button type="button" class="nav-item is-active" data-section="ventas">
             <span class="nav-item-left">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="9" cy="21" r="1" />
@@ -1472,6 +1553,12 @@
               </svg>
               <span>Inventario</span>
             </span>
+            <span class="nav-item-hint admin-lock-badge" title="Requiere contraseña" aria-label="Requiere contraseña">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </span>
           </button>
 
           <button type="button" class="nav-item" data-section="sucursales">
@@ -1482,6 +1569,12 @@
                 <path d="M19 21V11l-6-4" />
               </svg>
               <span>Sucursales</span>
+            </span>
+            <span class="nav-item-hint admin-lock-badge" title="Requiere contraseña" aria-label="Requiere contraseña">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
             </span>
           </button>
 
@@ -1497,8 +1590,32 @@
           </button>
         </nav>
 
-        <div class="sidebar-footer">
-          Moneda local: Bolivianos (Bs) · Catálogo de tienda
+        <div class="sidebar-footer" style="display: flex; flex-direction: column; gap: 8px">
+          <span>Moneda local: Bolivianos (Bs) · Catálogo de tienda</span>
+          <button
+            type="button"
+            id="btnCambiarAdminClave"
+            class="btn btn-secondary btn-sm"
+            style="width: 100%; display: none"
+          >
+            Cambiar contraseña
+          </button>
+          <button
+            type="button"
+            id="btnBloquearAdmin"
+            class="btn btn-secondary btn-sm"
+            style="width: 100%; display: none"
+          >
+            Bloquear edición
+          </button>
+          <button
+            type="button"
+            id="btnAbrirModalReiniciar"
+            class="btn btn-secondary btn-sm"
+            style="width: 100%; color: var(--red-accent); border-color: var(--red-border)"
+          >
+            Reiniciar registros
+          </button>
         </div>
       </aside>
 
@@ -1521,7 +1638,7 @@
                 <line x1="3" y1="18" x2="21" y2="18" />
               </svg>
             </button>
-            <h1 id="topbarTitle" class="topbar-heading">Registro y catálogo de productos</h1>
+            <h1 id="topbarTitle" class="topbar-heading">Punto de venta</h1>
           </div>
 
           <div class="topbar-right">
@@ -1536,9 +1653,9 @@
 
         <main class="page-content">
           <!-- =================================================================
-               SECCIÓN 1: PRODUCTOS (ACTIVA POR DEFECTO)
+               SECCIÓN 1: PRODUCTOS (PROTEGIDA CON CONTRASEÑA)
                ================================================================= -->
-          <section id="seccion-productos" class="view-section is-active" aria-labelledby="topbarTitle">
+          <section id="seccion-productos" class="view-section" aria-labelledby="topbarTitle">
             <!-- Tarjetas de resumen arriba -->
             <div class="kpi-grid" aria-label="Resumen del catálogo">
               <article class="kpi-card">
@@ -2020,9 +2137,9 @@
           </section>
 
           <!-- =================================================================
-               SECCIÓN 2: VENTAS (PUNTO DE VENTA ACTIVO)
+               SECCIÓN 2: VENTAS (PUNTO DE VENTA ACTIVO SIN CONTRASEÑA)
                ================================================================= -->
-          <section id="seccion-ventas" class="view-section" aria-label="Punto de venta">
+          <section id="seccion-ventas" class="view-section is-active" aria-label="Punto de venta">
             <div id="posToast" class="toast-banner" role="status" aria-live="polite">
               <span id="posToastMessage"></span>
               <button type="button" id="btnCerrarPosToast" class="btn btn-secondary btn-sm">Cerrar</button>
@@ -2103,6 +2220,41 @@
                     <div class="pos-total-row is-grand">
                       <span>Total a cobrar</span>
                       <span id="posTotal" class="font-mono-num">Bs 0,00</span>
+                    </div>
+                  </div>
+
+                  <!-- Calculadora de billete / monto recibido y cambio a devolver -->
+                  <div id="posEfectivoPanel" class="pos-cash-panel">
+                    <div class="field-group">
+                      <label for="posMontoRecibido" class="field-label">
+                        <span>Efectivo / billete recibido (Bs)</span>
+                        <span class="field-hint-inline">Acepta coma o punto</span>
+                      </label>
+                      <div class="currency-input-wrap">
+                        <span class="currency-prefix" aria-hidden="true">Bs</span>
+                        <input
+                          type="text"
+                          inputmode="decimal"
+                          id="posMontoRecibido"
+                          class="input-control font-mono-num"
+                          placeholder="0,00"
+                          autocomplete="off"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="pos-bills-row" aria-label="Billetes frecuentes en Bolivianos">
+                      <button type="button" class="btn-bill" data-pos-bill="exacto">Exacto</button>
+                      <button type="button" class="btn-bill font-mono-num" data-pos-bill="10">Bs 10</button>
+                      <button type="button" class="btn-bill font-mono-num" data-pos-bill="20">Bs 20</button>
+                      <button type="button" class="btn-bill font-mono-num" data-pos-bill="50">Bs 50</button>
+                      <button type="button" class="btn-bill font-mono-num" data-pos-bill="100">Bs 100</button>
+                      <button type="button" class="btn-bill font-mono-num" data-pos-bill="200">Bs 200</button>
+                    </div>
+
+                    <div id="posCambioBox" class="pos-change-box" aria-live="polite">
+                      <span id="posCambioLabel" class="pos-change-label">Cambio a devolver</span>
+                      <span id="posCambioValor" class="pos-change-value font-mono-num">Bs 0,00</span>
                     </div>
                   </div>
 
@@ -2501,6 +2653,99 @@
     </div>
 
     <!-- =======================================================================
+         MODAL DE CONFIRMACIÓN PARA REINICIAR TODOS LOS REGISTROS
+         ======================================================================= -->
+    <div
+      id="modalReiniciar"
+      class="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modalReiniciarTitulo"
+    >
+      <div class="modal-dialog">
+        <h3 id="modalReiniciarTitulo" class="modal-title">¿Reiniciar todos los registros?</h3>
+        <p class="modal-text">
+          Esta acción eliminará todos los productos, ventas registradas, movimientos de inventario y sucursales adicionales, dejando el sistema en cero con la Sucursal principal.
+        </p>
+        <div class="modal-actions">
+          <button type="button" id="btnCancelarReiniciar" class="btn btn-secondary btn-sm">Cancelar</button>
+          <button type="button" id="btnConfirmarReiniciar" class="btn btn-danger btn-sm">Sí, reiniciar todo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =======================================================================
+         MODAL DE CONTRASEÑA PARA EDICIÓN / PRODUCTOS (NO PARA VENTAS)
+         ======================================================================= -->
+    <div
+      id="modalAdminClave"
+      class="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modalAdminClaveTitulo"
+    >
+      <div class="modal-dialog">
+        <h3 id="modalAdminClaveTitulo" class="modal-title">Acceso protegido</h3>
+        <p class="modal-text">
+          Ingresa la contraseña de administrador para registrar o editar productos y gestionar la tienda. La sección de Ventas no requiere contraseña.
+        </p>
+        <form id="formAdminClave" novalidate style="display: flex; flex-direction: column; gap: 12px">
+          <div class="field-group">
+            <label for="adminClaveInput" class="field-label">Contraseña <span class="required-mark">*</span></label>
+            <input
+              type="password"
+              id="adminClaveInput"
+              class="input-control"
+              placeholder="Ingresa la contraseña"
+              autocomplete="current-password"
+              required
+            />
+            <span id="adminClaveError" class="field-error" aria-live="polite"></span>
+          </div>
+          <div class="modal-actions">
+            <button type="button" id="btnCancelarAdminClave" class="btn btn-secondary btn-sm">Cancelar</button>
+            <button type="submit" id="btnConfirmarAdminClave" class="btn btn-primary btn-sm">Ingresar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- =======================================================================
+         MODAL PARA CAMBIAR CONTRASEÑA DE ADMINISTRADOR
+         ======================================================================= -->
+    <div
+      id="modalCambiarClave"
+      class="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modalCambiarClaveTitulo"
+    >
+      <div class="modal-dialog">
+        <h3 id="modalCambiarClaveTitulo" class="modal-title">Cambiar contraseña</h3>
+        <p class="modal-text">Actualiza la contraseña requerida para ingresar a editar productos.</p>
+        <form id="formCambiarClave" novalidate style="display: flex; flex-direction: column; gap: 12px">
+          <div class="field-group">
+            <label for="claveActualInput" class="field-label">Contraseña actual <span class="required-mark">*</span></label>
+            <input type="password" id="claveActualInput" class="input-control" required />
+          </div>
+          <div class="field-group">
+            <label for="claveNuevaInput" class="field-label">Nueva contraseña (mín. 4 caracteres) <span class="required-mark">*</span></label>
+            <input type="password" id="claveNuevaInput" class="input-control" required />
+          </div>
+          <div class="field-group">
+            <label for="claveConfirmarInput" class="field-label">Confirmar nueva contraseña <span class="required-mark">*</span></label>
+            <input type="password" id="claveConfirmarInput" class="input-control" required />
+            <span id="cambiarClaveError" class="field-error" aria-live="polite"></span>
+          </div>
+          <div class="modal-actions">
+            <button type="button" id="btnCancelarCambiarClave" class="btn btn-secondary btn-sm">Cancelar</button>
+            <button type="submit" id="btnGuardarNuevaClave" class="btn btn-primary btn-sm">Guardar contraseña</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- =======================================================================
          MODAL DE ESCÁNER DE CÓDIGO DE BARRAS CON CÁMARA
          ======================================================================= -->
     <div
@@ -2782,11 +3027,22 @@
       }
 
       function leerProductosLocales() {
-        return leerListaLocal(CLAVE_LOCAL_PRODUCTOS, productosInicialesDemo);
+        return leerListaLocal(CLAVE_LOCAL_PRODUCTOS, []);
       }
 
       function guardarProductosLocales(lista) {
         guardarListaLocal(CLAVE_LOCAL_PRODUCTOS, lista);
+      }
+
+      function limpiarAlmacenamientoLocal() {
+        try {
+          localStorage.removeItem(CLAVE_LOCAL_PRODUCTOS);
+          localStorage.removeItem(CLAVE_LOCAL_VENTAS);
+          localStorage.removeItem(CLAVE_LOCAL_MOVIMIENTOS);
+          localStorage.removeItem(CLAVE_LOCAL_SUCURSALES);
+        } catch (_err) {
+          // Ignorar errores de almacenamiento
+        }
       }
 
       async function leerJsonSeguro(resp) {
@@ -3188,6 +3444,39 @@
         return nuevoMov;
       }
 
+      async function reiniciarTodosLosRegistros() {
+        if (!usandoRespaldoLocal) {
+          const resp = await fetch("/api/reiniciar", { method: "POST" });
+          const { esJson, data: body } = await leerJsonSeguro(resp);
+          if (!esJson || (resp.status === 503 && body && body.code === "SUPABASE_NOT_CONFIGURED")) {
+            usandoRespaldoLocal = true;
+          } else if (!resp.ok) {
+            throw new Error((body && body.error) || "No se pudieron reiniciar los registros en Supabase.");
+          } else {
+            baseDatosMemoria.sucursales =
+              body && Array.isArray(body.sucursales) && body.sucursales.length > 0
+                ? body.sucursales
+                : [...sucursalesPorDefecto];
+          }
+        }
+
+        limpiarAlmacenamientoLocal();
+        if (usandoRespaldoLocal) {
+          baseDatosMemoria.sucursales = [...sucursalesPorDefecto];
+        }
+        baseDatosMemoria.productos = [];
+        baseDatosMemoria.ventas = [];
+        baseDatosMemoria.movimientos = [];
+        estadoUI.carritoPos = [];
+        estadoUI.sucursalActiva = "sucursal-principal";
+        el.posMontoRecibido.value = "";
+        actualizarSelectoresSucursal();
+        el.selectorSucursalGlobal.value = "sucursal-principal";
+        el.filtroSucursalTabla.value = "sucursal-principal";
+        limpiarFormulario();
+        refrescarTodo();
+      }
+
       /* =======================================================================
          3. ESTRUCTURA PREPARADA PARA VENTAS Y ESCÁNER DE CÁMARA
          ======================================================================= */
@@ -3231,12 +3520,14 @@
          4. ESTADO DE INTERFAZ Y REFERENCIAS DOM
          ======================================================================= */
       const estadoUI = {
-        seccionActiva: "productos",
+        seccionActiva: "ventas",
         sucursalActiva: "sucursal-principal",
         imagenActualDataUrl: "",
         imagenNombreArchivo: "",
         idPendienteEliminar: null,
-        carritoPos: [], // Carrito visual de demostración en sección Ventas
+        carritoPos: [],
+        adminDesbloqueado: false,
+        accionPendienteAdmin: null,
       };
 
       const el = {
@@ -3302,11 +3593,30 @@
         cuerpoTablaProductos: document.getElementById("cuerpoTablaProductos"),
         estadoVacioTabla: document.getElementById("estadoVacioTabla"),
         subtituloTabla: document.getElementById("subtituloTabla"),
-        // Modal eliminar
+        // Modal eliminar y reiniciar
         modalEliminar: document.getElementById("modalEliminar"),
         modalEliminarMensaje: document.getElementById("modalEliminarMensaje"),
         btnCancelarEliminar: document.getElementById("btnCancelarEliminar"),
         btnConfirmarEliminar: document.getElementById("btnConfirmarEliminar"),
+        btnAbrirModalReiniciar: document.getElementById("btnAbrirModalReiniciar"),
+        modalReiniciar: document.getElementById("modalReiniciar"),
+        btnCancelarReiniciar: document.getElementById("btnCancelarReiniciar"),
+        btnConfirmarReiniciar: document.getElementById("btnConfirmarReiniciar"),
+        // Control de acceso con contraseña para Productos/Edición
+        btnCambiarAdminClave: document.getElementById("btnCambiarAdminClave"),
+        btnBloquearAdmin: document.getElementById("btnBloquearAdmin"),
+        modalAdminClave: document.getElementById("modalAdminClave"),
+        formAdminClave: document.getElementById("formAdminClave"),
+        adminClaveInput: document.getElementById("adminClaveInput"),
+        adminClaveError: document.getElementById("adminClaveError"),
+        btnCancelarAdminClave: document.getElementById("btnCancelarAdminClave"),
+        modalCambiarClave: document.getElementById("modalCambiarClave"),
+        formCambiarClave: document.getElementById("formCambiarClave"),
+        claveActualInput: document.getElementById("claveActualInput"),
+        claveNuevaInput: document.getElementById("claveNuevaInput"),
+        claveConfirmarInput: document.getElementById("claveConfirmarInput"),
+        cambiarClaveError: document.getElementById("cambiarClaveError"),
+        btnCancelarCambiarClave: document.getElementById("btnCancelarCambiarClave"),
         // Escáner con cámara
         btnEscanearCamara: document.getElementById("btnEscanearCamara"),
         btnPosEscanearCamara: document.getElementById("btnPosEscanearCamara"),
@@ -3358,6 +3668,11 @@
         posSubtotal: document.getElementById("posSubtotal"),
         posTotal: document.getElementById("posTotal"),
         posMetodoPago: document.getElementById("posMetodoPago"),
+        posEfectivoPanel: document.getElementById("posEfectivoPanel"),
+        posMontoRecibido: document.getElementById("posMontoRecibido"),
+        posCambioBox: document.getElementById("posCambioBox"),
+        posCambioLabel: document.getElementById("posCambioLabel"),
+        posCambioValor: document.getElementById("posCambioValor"),
         posSucursalNombre: document.getElementById("posSucursalNombre"),
         btnCobrarVenta: document.getElementById("btnCobrarVenta"),
         btnVaciarCarrito: document.getElementById("btnVaciarCarrito"),
@@ -3386,7 +3701,87 @@
         reportes: "Reportes de tienda",
       };
 
+      const SECCIONES_PROTEGIDAS = new Set(["productos", "inventario", "sucursales"]);
+      const CLAVE_LOCAL_ADMIN_HASH = "minimarket_bolivia_admin_hash_v1";
+      const CLAVE_SESION_ADMIN = "minimarket_bolivia_admin_sesion_v1";
+      const CLAVE_ADMIN_INICIAL = "1234";
+
+      async function generarHashClave(texto) {
+        const valor = String(texto ?? "");
+        if (window.crypto && window.crypto.subtle && typeof TextEncoder !== "undefined") {
+          const buf = await window.crypto.subtle.digest(
+            "SHA-256",
+            new TextEncoder().encode(valor)
+          );
+          return Array.from(new Uint8Array(buf))
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
+        }
+        let h = 2166136261;
+        for (let i = 0; i < valor.length; i += 1) {
+          h ^= valor.charCodeAt(i);
+          h = Math.imul(h, 16777619);
+        }
+        return `fnv_${(h >>> 0).toString(16)}`;
+      }
+
+      async function verificarClaveAdmin(claveIngresada) {
+        const hashIngresado = await generarHashClave(claveIngresada);
+        let hashGuardado = "";
+        try {
+          hashGuardado = localStorage.getItem(CLAVE_LOCAL_ADMIN_HASH) || "";
+        } catch (_err) {
+          hashGuardado = "";
+        }
+        if (!hashGuardado) {
+          const hashDefault = await generarHashClave(CLAVE_ADMIN_INICIAL);
+          return hashIngresado === hashDefault;
+        }
+        return hashIngresado === hashGuardado;
+      }
+
+      function actualizarEstadoCandadoUI() {
+        document.querySelectorAll(".admin-lock-badge").forEach((badge) => {
+          badge.style.display = estadoUI.adminDesbloqueado ? "none" : "inline-flex";
+        });
+        el.btnBloquearAdmin.style.display = estadoUI.adminDesbloqueado ? "inline-flex" : "none";
+        el.btnCambiarAdminClave.style.display = estadoUI.adminDesbloqueado ? "inline-flex" : "none";
+      }
+
+      function solicitarAccesoAdmin(callbackAlDesbloquear) {
+        if (estadoUI.adminDesbloqueado) {
+          callbackAlDesbloquear();
+          return;
+        }
+        cerrarMenuMobile();
+        estadoUI.accionPendienteAdmin = callbackAlDesbloquear;
+        el.adminClaveInput.value = "";
+        el.adminClaveError.textContent = "";
+        el.modalAdminClave.classList.add("is-open");
+        setTimeout(() => el.adminClaveInput.focus(), 50);
+      }
+
+      function bloquearModoAdmin() {
+        estadoUI.adminDesbloqueado = false;
+        estadoUI.accionPendienteAdmin = null;
+        try {
+          sessionStorage.removeItem(CLAVE_SESION_ADMIN);
+        } catch (_err) {
+          // Ignorar
+        }
+        actualizarEstadoCandadoUI();
+        if (SECCIONES_PROTEGIDAS.has(estadoUI.seccionActiva)) {
+          cambiarSeccion("ventas");
+        }
+        mostrarMensajePOS("Modo edición bloqueado. Solo Ventas permanece habilitado.");
+      }
+
       function cambiarSeccion(nombreSeccion) {
+        if (SECCIONES_PROTEGIDAS.has(nombreSeccion) && !estadoUI.adminDesbloqueado) {
+          solicitarAccesoAdmin(() => cambiarSeccion(nombreSeccion));
+          return;
+        }
+
         estadoUI.seccionActiva = nombreSeccion;
         el.topbarTitle.textContent = titulosPorSeccion[nombreSeccion] || "MiniMarket Bolivia";
 
@@ -4186,6 +4581,7 @@
           el.posCarritoLista.innerHTML = `<p style="color: var(--text-muted); margin: 4px 0;">Agrega productos del catálogo izquierdo para iniciar una venta.</p>`;
           el.posSubtotal.textContent = formatearMoneda(0);
           el.posTotal.textContent = formatearMoneda(0);
+          actualizarCalculadoraCambioPOS(0);
           return;
         }
 
@@ -4214,6 +4610,63 @@
         );
         el.posSubtotal.textContent = formatearMoneda(ventaCalculada.total);
         el.posTotal.textContent = formatearMoneda(ventaCalculada.total);
+        actualizarCalculadoraCambioPOS(ventaCalculada.total);
+      }
+
+      function obtenerTotalCarritoPOS() {
+        return Number(
+          estadoUI.carritoPos
+            .reduce((acum, item) => acum + item.cantidad * item.precioUnitario, 0)
+            .toFixed(2)
+        );
+      }
+
+      function actualizarCalculadoraCambioPOS(totalOpcional) {
+        const total =
+          typeof totalOpcional === "number" ? totalOpcional : obtenerTotalCarritoPOS();
+        const esEfectivo = el.posMetodoPago.value === "Efectivo";
+
+        el.posEfectivoPanel.style.display = esEfectivo ? "flex" : "none";
+        if (!esEfectivo) return;
+
+        const botonesBillete = el.posEfectivoPanel.querySelectorAll("button[data-pos-bill]");
+        botonesBillete.forEach((b) => {
+          b.disabled = estadoUI.carritoPos.length === 0;
+        });
+
+        const textoRaw = el.posMontoRecibido.value.trim();
+        el.posCambioBox.classList.remove("is-ok", "is-short");
+
+        if (estadoUI.carritoPos.length === 0) {
+          el.posCambioLabel.textContent = "Cambio a devolver";
+          el.posCambioValor.textContent = formatearMoneda(0);
+          return;
+        }
+
+        if (!textoRaw) {
+          el.posCambioLabel.textContent = "Ingresa el monto recibido";
+          el.posCambioValor.textContent = formatearMoneda(0);
+          return;
+        }
+
+        const recibido = parsearNumeroDecimal(textoRaw);
+        if (!Number.isFinite(recibido) || recibido < 0) {
+          el.posCambioBox.classList.add("is-short");
+          el.posCambioLabel.textContent = "Monto inválido";
+          el.posCambioValor.textContent = "—";
+          return;
+        }
+
+        const diferencia = Number((recibido - total).toFixed(2));
+        if (diferencia >= 0) {
+          el.posCambioBox.classList.add("is-ok");
+          el.posCambioLabel.textContent = "Cambio a devolver";
+          el.posCambioValor.textContent = formatearMoneda(diferencia);
+        } else {
+          el.posCambioBox.classList.add("is-short");
+          el.posCambioLabel.textContent = "Falta por cubrir";
+          el.posCambioValor.textContent = formatearMoneda(Math.abs(diferencia));
+        }
       }
 
       function renderizarSucursalesMaqueta() {
@@ -4573,6 +5026,17 @@
         });
 
         el.posMetodoPago.addEventListener("change", renderizarPOS);
+        el.posMontoRecibido.addEventListener("input", () => actualizarCalculadoraCambioPOS());
+        el.posEfectivoPanel.addEventListener("click", (e) => {
+          const btn = e.target.closest("button[data-pos-bill]");
+          if (!btn || estadoUI.carritoPos.length === 0) return;
+          const total = obtenerTotalCarritoPOS();
+          const tipoBillete = btn.dataset.posBill;
+          const monto = tipoBillete === "exacto" ? total : Number(tipoBillete);
+          el.posMontoRecibido.value = numeroAInputDecimal(monto);
+          actualizarCalculadoraCambioPOS(total);
+        });
+
         el.btnCerrarPosToast.addEventListener("click", () => {
           el.posToast.classList.remove("is-visible");
         });
@@ -4607,11 +5071,34 @@
 
         el.btnVaciarCarrito.addEventListener("click", () => {
           estadoUI.carritoPos = [];
+          el.posMontoRecibido.value = "";
           renderizarPOS();
         });
 
         el.btnCobrarVenta.addEventListener("click", async () => {
           if (estadoUI.carritoPos.length === 0) return;
+
+          const totalCarrito = obtenerTotalCarritoPOS();
+          let textoCambioToast = "";
+
+          if (el.posMetodoPago.value === "Efectivo" && el.posMontoRecibido.value.trim()) {
+            const recibido = parsearNumeroDecimal(el.posMontoRecibido.value);
+            if (!Number.isFinite(recibido) || recibido < 0) {
+              mostrarMensajePOS("El monto recibido en efectivo no es válido.", true);
+              el.posMontoRecibido.focus();
+              return;
+            }
+            if (recibido < totalCarrito) {
+              mostrarMensajePOS(
+                `El monto recibido (${formatearMoneda(recibido)}) es menor al total (${formatearMoneda(totalCarrito)}).`,
+                true
+              );
+              el.posMontoRecibido.focus();
+              return;
+            }
+            const cambio = Number((recibido - totalCarrito).toFixed(2));
+            textoCambioToast = ` · Cambio: ${formatearMoneda(cambio)}`;
+          }
 
           el.btnCobrarVenta.disabled = true;
           el.btnCobrarVenta.textContent = "Procesando venta...";
@@ -4625,9 +5112,10 @@
               el.posMetodoPago.value
             );
             estadoUI.carritoPos = [];
+            el.posMontoRecibido.value = "";
             refrescarTodo();
             mostrarMensajePOS(
-              `Venta registrada por ${formatearMoneda(ventaRegistrada.total)} (${ventaRegistrada.metodoPago}). Stock actualizado.`
+              `Venta registrada por ${formatearMoneda(ventaRegistrada.total)} (${ventaRegistrada.metodoPago})${textoCambioToast}. Stock actualizado.`
             );
           } catch (error) {
             mostrarMensajePOS(error.message || "No se pudo completar la venta.", true);
@@ -4783,6 +5271,139 @@
           }
         });
         el.btnLinternaEscaner.addEventListener("click", alternarLinternaEscaner);
+
+        // Modal de acceso protegido con contraseña (solo para administración/productos, no Ventas)
+        el.formAdminClave.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const clave = el.adminClaveInput.value;
+          if (!clave) {
+            el.adminClaveError.textContent = "Ingresa la contraseña.";
+            el.adminClaveInput.focus();
+            return;
+          }
+
+          const valida = await verificarClaveAdmin(clave);
+          if (!valida) {
+            el.adminClaveError.textContent = "Contraseña incorrecta.";
+            el.adminClaveInput.select();
+            return;
+          }
+
+          estadoUI.adminDesbloqueado = true;
+          try {
+            sessionStorage.setItem(CLAVE_SESION_ADMIN, "1");
+          } catch (_err) {
+            // Ignorar
+          }
+          actualizarEstadoCandadoUI();
+          el.modalAdminClave.classList.remove("is-open");
+
+          const pendiente = estadoUI.accionPendienteAdmin;
+          estadoUI.accionPendienteAdmin = null;
+          if (typeof pendiente === "function") {
+            pendiente();
+          }
+        });
+
+        el.btnCancelarAdminClave.addEventListener("click", () => {
+          estadoUI.accionPendienteAdmin = null;
+          el.modalAdminClave.classList.remove("is-open");
+        });
+        el.modalAdminClave.addEventListener("click", (e) => {
+          if (e.target === el.modalAdminClave) {
+            estadoUI.accionPendienteAdmin = null;
+            el.modalAdminClave.classList.remove("is-open");
+          }
+        });
+
+        el.btnBloquearAdmin.addEventListener("click", () => {
+          cerrarMenuMobile();
+          bloquearModoAdmin();
+        });
+
+        // Modal para cambiar la contraseña de administrador
+        el.btnCambiarAdminClave.addEventListener("click", () => {
+          cerrarMenuMobile();
+          solicitarAccesoAdmin(() => {
+            el.formCambiarClave.reset();
+            el.cambiarClaveError.textContent = "";
+            el.modalCambiarClave.classList.add("is-open");
+            setTimeout(() => el.claveActualInput.focus(), 50);
+          });
+        });
+        el.btnCancelarCambiarClave.addEventListener("click", () => {
+          el.modalCambiarClave.classList.remove("is-open");
+        });
+        el.modalCambiarClave.addEventListener("click", (e) => {
+          if (e.target === el.modalCambiarClave) {
+            el.modalCambiarClave.classList.remove("is-open");
+          }
+        });
+        el.formCambiarClave.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const actual = el.claveActualInput.value;
+          const nueva = el.claveNuevaInput.value;
+          const confirmar = el.claveConfirmarInput.value;
+
+          if (!(await verificarClaveAdmin(actual))) {
+            el.cambiarClaveError.textContent = "La contraseña actual no coincide.";
+            el.claveActualInput.focus();
+            return;
+          }
+          if (nueva.length < 4) {
+            el.cambiarClaveError.textContent = "La nueva contraseña debe tener al menos 4 caracteres.";
+            el.claveNuevaInput.focus();
+            return;
+          }
+          if (nueva !== confirmar) {
+            el.cambiarClaveError.textContent = "Las contraseñas nuevas no coinciden.";
+            el.claveConfirmarInput.focus();
+            return;
+          }
+
+          try {
+            const nuevoHash = await generarHashClave(nueva);
+            localStorage.setItem(CLAVE_LOCAL_ADMIN_HASH, nuevoHash);
+            el.modalCambiarClave.classList.remove("is-open");
+            mostrarConfirmacion("Contraseña de administrador actualizada correctamente.");
+          } catch (_err) {
+            el.cambiarClaveError.textContent = "No se pudo guardar la nueva contraseña en este navegador.";
+          }
+        });
+
+        // Modal de reinicio completo de registros (protegido con contraseña)
+        el.btnAbrirModalReiniciar.addEventListener("click", () => {
+          cerrarMenuMobile();
+          solicitarAccesoAdmin(() => {
+            el.modalReiniciar.classList.add("is-open");
+          });
+        });
+        el.btnCancelarReiniciar.addEventListener("click", () => {
+          el.modalReiniciar.classList.remove("is-open");
+        });
+        el.modalReiniciar.addEventListener("click", (e) => {
+          if (e.target === el.modalReiniciar) {
+            el.modalReiniciar.classList.remove("is-open");
+          }
+        });
+        el.btnConfirmarReiniciar.addEventListener("click", async () => {
+          el.btnConfirmarReiniciar.disabled = true;
+          el.btnConfirmarReiniciar.textContent = "Reiniciando...";
+          try {
+            await reiniciarTodosLosRegistros();
+            el.modalReiniciar.classList.remove("is-open");
+            mostrarConfirmacion("Todos los registros fueron reiniciados a cero.");
+            mostrarMensajePOS("Todos los registros fueron reiniciados a cero.");
+          } catch (error) {
+            mostrarConfirmacion(
+              error.message || "No se pudieron reiniciar los registros.",
+              true
+            );
+          } finally {
+            el.btnConfirmarReiniciar.disabled = false;
+            el.btnConfirmarReiniciar.textContent = "Sí, reiniciar todo";
+          }
+        });
       }
 
       /* =======================================================================
@@ -5170,6 +5791,16 @@
          10. ARRANQUE DE LA APLICACIÓN
          ======================================================================= */
       (async function iniciarAplicacion() {
+        try {
+          if (!localStorage.getItem("minimarket_bolivia_reiniciado_v2")) {
+            limpiarAlmacenamientoLocal();
+            localStorage.setItem("minimarket_bolivia_reiniciado_v2", "1");
+          }
+          estadoUI.adminDesbloqueado = sessionStorage.getItem(CLAVE_SESION_ADMIN) === "1";
+        } catch (_err) {
+          // Ignorar si almacenamiento no está disponible
+        }
+        actualizarEstadoCandadoUI();
         inicializarEventos();
         await sincronizarDesdeSupabase();
         refrescarTodo();

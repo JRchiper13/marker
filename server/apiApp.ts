@@ -801,6 +801,87 @@ export function crearAppApi(): Express {
     }
   });
 
+  // =========================================================================
+  // REINICIAR TODOS LOS REGISTROS
+  // =========================================================================
+
+  app.post('/api/reiniciar', async (_req: Request, res: Response) => {
+    const supabase = obtenerClienteSupabase();
+    if (!supabase) {
+      return res.status(503).json({
+        code: 'SUPABASE_NOT_CONFIGURED',
+        error: 'Supabase no configurado en variables de entorno.',
+      });
+    }
+
+    try {
+      const errIgnorables = new Set(['42P01', 'PGRST205']);
+
+      const { error: errMovs } = await supabase
+        .from('movimientos_inventario')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      if (errMovs && !errIgnorables.has(errMovs.code ?? '')) {
+        console.error('Error limpiando movimientos_inventario:', errMovs);
+        return res.status(500).json({
+          error: traducirErrorSupabase(errMovs, 'No se pudieron eliminar los movimientos de inventario.'),
+        });
+      }
+
+      const { error: errVentas } = await supabase
+        .from('ventas')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      if (errVentas && !errIgnorables.has(errVentas.code ?? '')) {
+        console.error('Error limpiando ventas:', errVentas);
+        return res.status(500).json({
+          error: traducirErrorSupabase(errVentas, 'No se pudieron eliminar las ventas.'),
+        });
+      }
+
+      const { error: errProd } = await supabase
+        .from('productos')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      if (errProd && !errIgnorables.has(errProd.code ?? '')) {
+        console.error('Error limpiando productos:', errProd);
+        return res.status(500).json({
+          error: traducirErrorSupabase(errProd, 'No se pudieron eliminar los productos.'),
+        });
+      }
+
+      const { error: errSuc } = await supabase
+        .from('sucursales')
+        .delete()
+        .neq('id', 'sucursal-principal');
+      if (errSuc && !errIgnorables.has(errSuc.code ?? '')) {
+        console.error('Error limpiando sucursales:', errSuc);
+        return res.status(500).json({
+          error: traducirErrorSupabase(errSuc, 'No se pudieron limpiar las sucursales adicionales.'),
+        });
+      }
+
+      const { data: sucursalBase } = await supabase
+        .from('sucursales')
+        .upsert(
+          {
+            id: 'sucursal-principal',
+            nombre: 'Sucursal principal',
+            direccion: 'Av. Arce #2140, Zona Central',
+            encargado: 'Administrador General',
+            activa: true,
+          },
+          { onConflict: 'id' }
+        )
+        .select('id, nombre, direccion, encargado, activa');
+
+      return res.json({ ok: true, sucursales: sucursalBase ?? [] });
+    } catch (err) {
+      console.error('Excepción en POST /api/reiniciar:', err);
+      return res.status(500).json({ error: 'Error interno al reiniciar los registros.' });
+    }
+  });
+
   app.all('/api/*', (_req: Request, res: Response) => {
     return res.status(404).json({ error: 'Ruta de API no encontrada.' });
   });

@@ -812,6 +812,12 @@
         display: flex;
       }
 
+      .toast-banner.is-error {
+        background-color: var(--red-soft);
+        border-color: var(--red-border);
+        color: var(--red-text);
+      }
+
       /* =========================================================================
          TABLA DE PRODUCTOS Y FILTROS
          ========================================================================= */
@@ -1380,7 +1386,7 @@
         </nav>
 
         <div class="sidebar-footer">
-          Moneda local: Bolivianos (Bs) · Modo en memoria
+          Moneda local: Bolivianos (Bs) · Catálogo de tienda
         </div>
       </aside>
 
@@ -2270,121 +2276,214 @@
       }
 
       /* =======================================================================
-         2. CAPA DE DATOS EN MEMORIA (PREPARADA PARA CONECTAR BASE DE DATOS)
+         2. CAPA DE DATOS CON SUPABASE (/api/*) Y RESPALDO EN LOCALSTORAGE
          =======================================================================
-         NOTA PARA BASE DE DATOS:
-         En el siguiente paso, reemplaza el almacenamiento `baseDatosMemoria`
-         dentro de las funciones CRUD (obtenerProductos, guardarProducto,
-         actualizarProducto, eliminarProducto) por llamadas async con `fetch()`
-         hacia tu API REST, Supabase, Firebase o PostgreSQL.
+         Las operaciones CRUD se comunican con el servidor Express (/api/productos
+         y /api/sucursales), el cual ejecuta las consultas seguras contra Supabase.
+         Si las variables SUPABASE_URL / SUPABASE_ANON_KEY aún no están configuradas,
+         la aplicación utiliza localStorage automáticamente para no perder datos.
          ======================================================================= */
 
+      const CLAVE_LOCAL_PRODUCTOS = "minimarket_bolivia_productos_v1";
+      let usandoRespaldoLocal = false;
+
+      const sucursalesPorDefecto = [
+        {
+          id: "sucursal-principal",
+          nombre: "Sucursal principal",
+          direccion: "Av. Arce #2140, Zona Central",
+          encargado: "Administrador General",
+          activa: true,
+        },
+      ];
+
+      const productosInicialesDemo = [
+        {
+          id: "prod_1001",
+          codigoBarras: "7771234000112",
+          nombre: "Leche entera PIL 946 ml",
+          categoria: "Lácteos",
+          marca: "PIL Andina",
+          unidad: "Unidad",
+          precioCompra: 6.2,
+          precioVenta: 7.5,
+          stockActual: 24,
+          stockMinimo: 10,
+          proveedor: "PIL Andina S.A.",
+          fechaVencimiento: sumarDiasAHoyISO(14),
+          sucursalId: "sucursal-principal",
+          imagenDataUrl: "",
+          descripcion: "Envase UHT larga vida, mantener en lugar fresco.",
+          activo: true,
+          creadoFecha: new Date().toISOString(),
+          actualizadoFecha: new Date().toISOString(),
+        },
+        {
+          id: "prod_1002",
+          codigoBarras: "7775001900221",
+          nombre: "Aceite refinado Fino 900 ml",
+          categoria: "Abarrotes",
+          marca: "Fino",
+          unidad: "Unidad",
+          precioCompra: 11.5,
+          precioVenta: 14.0,
+          stockActual: 4,
+          stockMinimo: 8,
+          proveedor: "Industrias de Aceite S.A.",
+          fechaVencimiento: sumarDiasAHoyISO(180),
+          sucursalId: "sucursal-principal",
+          imagenDataUrl: "",
+          descripcion: "Aceite vegetal comestible en botella PET.",
+          activo: true,
+          creadoFecha: new Date().toISOString(),
+          actualizadoFecha: new Date().toISOString(),
+        },
+        {
+          id: "prod_1003",
+          codigoBarras: "7779000112233",
+          nombre: "Coca-Cola Original 2 Litros",
+          categoria: "Bebidas",
+          marca: "Coca-Cola",
+          unidad: "Unidad",
+          precioCompra: 10.0,
+          precioVenta: 13.0,
+          stockActual: 18,
+          stockMinimo: 6,
+          proveedor: "Embol S.A.",
+          fechaVencimiento: sumarDiasAHoyISO(95),
+          sucursalId: "sucursal-principal",
+          imagenDataUrl: "",
+          descripcion: "Gaseosa retornable / no retornable.",
+          activo: true,
+          creadoFecha: new Date().toISOString(),
+          actualizadoFecha: new Date().toISOString(),
+        },
+        {
+          id: "prod_1004",
+          codigoBarras: "7772200445511",
+          nombre: "Yogurt bebible frutilla 1 Litro",
+          categoria: "Lácteos",
+          marca: "Delizia",
+          unidad: "Litro",
+          precioCompra: 9.0,
+          precioVenta: 11.5,
+          stockActual: 3,
+          stockMinimo: 5,
+          proveedor: "Delizia Ltda.",
+          fechaVencimiento: sumarDiasAHoyISO(-2),
+          sucursalId: "sucursal-principal",
+          imagenDataUrl: "",
+          descripcion: "Requiere refrigeración entre 2 °C y 6 °C.",
+          activo: true,
+          creadoFecha: new Date().toISOString(),
+          actualizadoFecha: new Date().toISOString(),
+        },
+      ];
+
       const baseDatosMemoria = {
-        sucursales: [
-          {
-            id: "sucursal-principal",
-            nombre: "Sucursal principal",
-            direccion: "Av. Arce #2140, Zona Central",
-            encargado: "Administrador General",
-            activa: true,
-          },
-        ],
-        productos: [
-          {
-            id: "prod_1001",
-            codigoBarras: "7771234000112",
-            nombre: "Leche entera PIL 946 ml",
-            categoria: "Lácteos",
-            marca: "PIL Andina",
-            unidad: "Unidad",
-            precioCompra: 6.2,
-            precioVenta: 7.5,
-            stockActual: 24,
-            stockMinimo: 10,
-            proveedor: "PIL Andina S.A.",
-            fechaVencimiento: sumarDiasAHoyISO(14), // Próximo a vencer (< 30 días)
-            sucursalId: "sucursal-principal",
-            imagenDataUrl: "",
-            descripcion: "Envase UHT larga vida, mantener en lugar fresco.",
-            activo: true,
-            creadoFecha: new Date().toISOString(),
-            actualizadoFecha: new Date().toISOString(),
-          },
-          {
-            id: "prod_1002",
-            codigoBarras: "7775001900221",
-            nombre: "Aceite refinado Fino 900 ml",
-            categoria: "Abarrotes",
-            marca: "Fino",
-            unidad: "Unidad",
-            precioCompra: 11.5,
-            precioVenta: 14.0,
-            stockActual: 4, // Stock por debajo del mínimo
-            stockMinimo: 8,
-            proveedor: "Industrias de Aceite S.A.",
-            fechaVencimiento: sumarDiasAHoyISO(180),
-            sucursalId: "sucursal-principal",
-            imagenDataUrl: "",
-            descripcion: "Aceite vegetal comestible en botella PET.",
-            activo: true,
-            creadoFecha: new Date().toISOString(),
-            actualizadoFecha: new Date().toISOString(),
-          },
-          {
-            id: "prod_1003",
-            codigoBarras: "7779000112233",
-            nombre: "Coca-Cola Original 2 Litros",
-            categoria: "Bebidas",
-            marca: "Coca-Cola",
-            unidad: "Unidad",
-            precioCompra: 10.0,
-            precioVenta: 13.0,
-            stockActual: 18,
-            stockMinimo: 6,
-            proveedor: "Embol S.A.",
-            fechaVencimiento: sumarDiasAHoyISO(95),
-            sucursalId: "sucursal-principal",
-            imagenDataUrl: "",
-            descripcion: "Gaseosa retornable / no retornable.",
-            activo: true,
-            creadoFecha: new Date().toISOString(),
-            actualizadoFecha: new Date().toISOString(),
-          },
-          {
-            id: "prod_1004",
-            codigoBarras: "7772200445511",
-            nombre: "Yogurt bebible frutilla 1 Litro",
-            categoria: "Lácteos",
-            marca: "Delizia",
-            unidad: "Litro",
-            precioCompra: 9.0,
-            precioVenta: 11.5,
-            stockActual: 3, // Stock bajo y vencido para demostrar alertas
-            stockMinimo: 5,
-            proveedor: "Delizia Ltda.",
-            fechaVencimiento: sumarDiasAHoyISO(-2), // Vencido hace 2 días
-            sucursalId: "sucursal-principal",
-            imagenDataUrl: "",
-            descripcion: "Requiere refrigeración entre 2 °C y 6 °C.",
-            activo: true,
-            creadoFecha: new Date().toISOString(),
-            actualizadoFecha: new Date().toISOString(),
-          },
-        ],
+        sucursales: [...sucursalesPorDefecto],
+        productos: [],
         // Estructura preparada para el módulo de ventas futuro:
         // { id, fecha, sucursalId, items: [{ productoId, cantidad, precioUnitario }], total, metodoPago }
         ventas: [],
       };
 
-      /* --- Funciones centralizadas de acceso a datos (fáciles de migrar a API) --- */
+      function leerProductosLocales() {
+        try {
+          const guardado = localStorage.getItem(CLAVE_LOCAL_PRODUCTOS);
+          if (guardado) {
+            const parsed = JSON.parse(guardado);
+            if (Array.isArray(parsed)) return parsed;
+          }
+        } catch (_err) {
+          // Ignorar errores de almacenamiento
+        }
+        return [...productosInicialesDemo];
+      }
+
+      function guardarProductosLocales(lista) {
+        try {
+          localStorage.setItem(CLAVE_LOCAL_PRODUCTOS, JSON.stringify(lista));
+        } catch (_err) {
+          // Ignorar errores de cuota en localStorage
+        }
+      }
+
+      async function sincronizarDesdeSupabase() {
+        try {
+          const [respSuc, respProd] = await Promise.all([
+            fetch("/api/sucursales"),
+            fetch("/api/productos"),
+          ]);
+
+          if (respSuc.status === 503 || respProd.status === 503) {
+            usandoRespaldoLocal = true;
+            baseDatosMemoria.sucursales = [...sucursalesPorDefecto];
+            baseDatosMemoria.productos = leerProductosLocales();
+            return;
+          }
+
+          if (respSuc.ok) {
+            const sucursales = await respSuc.json();
+            if (Array.isArray(sucursales) && sucursales.length > 0) {
+              baseDatosMemoria.sucursales = sucursales;
+            }
+          }
+
+          if (!respProd.ok) {
+            const errData = await respProd.json().catch(() => ({}));
+            throw new Error(errData.error || "No se pudo cargar el catálogo desde Supabase.");
+          }
+
+          const productos = await respProd.json();
+          usandoRespaldoLocal = false;
+          baseDatosMemoria.productos = Array.isArray(productos) ? productos : [];
+          actualizarSelectoresSucursal();
+        } catch (error) {
+          if (window.location.protocol === "file:") {
+            usandoRespaldoLocal = true;
+            baseDatosMemoria.productos = leerProductosLocales();
+            return;
+          }
+          console.error("Error sincronizando con Supabase:", error);
+          usandoRespaldoLocal = true;
+          baseDatosMemoria.productos = leerProductosLocales();
+          mostrarConfirmacion(
+            error.message || "No se pudo conectar con Supabase; usando almacenamiento local.",
+            true
+          );
+        }
+      }
+
+      function actualizarSelectoresSucursal() {
+        const sucursales = obtenerSucursales();
+        const valorGlobalPrevio = el.selectorSucursalGlobal.value;
+        const valorFormPrevio = el.sucursalProducto.value;
+
+        const opcionesHTML = sucursales
+          .map((s) => `<option value="${escaparHTML(s.id)}">${escaparHTML(s.nombre)}</option>`)
+          .join("");
+
+        el.selectorSucursalGlobal.innerHTML = opcionesHTML;
+        el.filtroSucursalTabla.innerHTML = opcionesHTML;
+        el.sucursalProducto.innerHTML = opcionesHTML;
+
+        if (sucursales.some((s) => s.id === valorGlobalPrevio)) {
+          el.selectorSucursalGlobal.value = valorGlobalPrevio;
+          el.filtroSucursalTabla.value = valorGlobalPrevio;
+        }
+        if (sucursales.some((s) => s.id === valorFormPrevio)) {
+          el.sucursalProducto.value = valorFormPrevio;
+        }
+      }
+
+      /* --- Funciones centralizadas de acceso a datos (conectadas a Supabase) --- */
 
       function obtenerSucursales() {
-        // FUTURO BD: return await fetch('/api/sucursales').then(r => r.json());
         return [...baseDatosMemoria.sucursales];
       }
 
       function obtenerProductos(filtros = {}) {
-        // FUTURO BD: Consultar endpoint con parámetros de búsqueda, categoría y sucursalId
         const { busqueda = "", categoria = "todas", sucursalId = "todas" } = filtros;
         const termino = busqueda.trim().toLowerCase();
 
@@ -2408,12 +2507,27 @@
       }
 
       function obtenerProductoPorId(id) {
-        // FUTURO BD: return await fetch(`/api/productos/${id}`).then(r => r.json());
         return baseDatosMemoria.productos.find((p) => p.id === id) || null;
       }
 
-      function guardarProducto(datosProducto) {
-        // FUTURO BD: POST /api/productos enviando precios como números (sin "Bs")
+      async function guardarProducto(datosProducto) {
+        if (!usandoRespaldoLocal) {
+          const resp = await fetch("/api/productos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(datosProducto),
+          });
+          const body = await resp.json().catch(() => ({}));
+          if (resp.status === 503 && body.code === "SUPABASE_NOT_CONFIGURED") {
+            usandoRespaldoLocal = true;
+          } else if (!resp.ok) {
+            throw new Error(body.error || "No se pudo guardar el producto en Supabase.");
+          } else {
+            baseDatosMemoria.productos.unshift(body);
+            return body;
+          }
+        }
+
         const ahoraISO = new Date().toISOString();
         const nuevoRegistro = {
           ...datosProducto,
@@ -2422,11 +2536,31 @@
           actualizadoFecha: ahoraISO,
         };
         baseDatosMemoria.productos.unshift(nuevoRegistro);
+        guardarProductosLocales(baseDatosMemoria.productos);
         return nuevoRegistro;
       }
 
-      function actualizarProducto(id, datosActualizados) {
-        // FUTURO BD: PUT /api/productos/${id}
+      async function actualizarProducto(id, datosActualizados) {
+        if (!usandoRespaldoLocal) {
+          const resp = await fetch(`/api/productos/${encodeURIComponent(id)}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(datosActualizados),
+          });
+          const body = await resp.json().catch(() => ({}));
+          if (resp.status === 503 && body.code === "SUPABASE_NOT_CONFIGURED") {
+            usandoRespaldoLocal = true;
+          } else if (!resp.ok) {
+            throw new Error(body.error || "No se pudo actualizar el producto en Supabase.");
+          } else {
+            const indice = baseDatosMemoria.productos.findIndex((p) => p.id === id);
+            if (indice !== -1) {
+              baseDatosMemoria.productos[indice] = body;
+            }
+            return body;
+          }
+        }
+
         const indice = baseDatosMemoria.productos.findIndex((p) => p.id === id);
         if (indice === -1) return null;
 
@@ -2438,14 +2572,31 @@
           actualizadoFecha: new Date().toISOString(),
         };
         baseDatosMemoria.productos[indice] = actualizado;
+        guardarProductosLocales(baseDatosMemoria.productos);
         return actualizado;
       }
 
-      function eliminarProducto(id) {
-        // FUTURO BD: DELETE /api/productos/${id}
+      async function eliminarProducto(id) {
+        if (!usandoRespaldoLocal) {
+          const resp = await fetch(`/api/productos/${encodeURIComponent(id)}`, {
+            method: "DELETE",
+          });
+          const body = await resp.json().catch(() => ({}));
+          if (resp.status === 503 && body.code === "SUPABASE_NOT_CONFIGURED") {
+            usandoRespaldoLocal = true;
+          } else if (!resp.ok) {
+            throw new Error(body.error || "No se pudo eliminar el producto en Supabase.");
+          } else {
+            const indice = baseDatosMemoria.productos.findIndex((p) => p.id === id);
+            if (indice !== -1) baseDatosMemoria.productos.splice(indice, 1);
+            return true;
+          }
+        }
+
         const indice = baseDatosMemoria.productos.findIndex((p) => p.id === id);
         if (indice === -1) return false;
         baseDatosMemoria.productos.splice(indice, 1);
+        guardarProductosLocales(baseDatosMemoria.productos);
         return true;
       }
 
@@ -3068,13 +3219,14 @@
       }
 
       let temporizadorToast = null;
-      function mostrarConfirmacion(mensaje) {
+      function mostrarConfirmacion(mensaje, esError = false) {
         el.toastMessage.textContent = mensaje;
+        el.toastBanner.classList.toggle("is-error", Boolean(esError));
         el.toastBanner.classList.add("is-visible");
         clearTimeout(temporizadorToast);
         temporizadorToast = setTimeout(() => {
           el.toastBanner.classList.remove("is-visible");
-        }, 5000);
+        }, 5500);
       }
 
       function refrescarTodo() {
@@ -3283,8 +3435,8 @@
           renderizarImagenPreview("", "");
         });
 
-        // Envío del formulario (Crear o Actualizar producto)
-        el.formProducto.addEventListener("submit", (e) => {
+        // Envío del formulario (Crear o Actualizar producto en Supabase)
+        el.formProducto.addEventListener("submit", async (e) => {
           e.preventDefault();
           if (!validarFormularioCompleto()) return;
 
@@ -3308,16 +3460,35 @@
           };
 
           const idEdicion = el.productoIdEdicion.value;
-          if (idEdicion) {
-            actualizarProducto(idEdicion, datosProducto);
-            mostrarConfirmacion(`Producto "${datosProducto.nombre}" actualizado correctamente.`);
-          } else {
-            guardarProducto(datosProducto);
-            mostrarConfirmacion(`Producto "${datosProducto.nombre}" registrado en el catálogo.`);
-          }
+          const textoOriginalBtn = el.btnGuardarProducto.textContent;
+          el.btnGuardarProducto.disabled = true;
+          el.btnGuardarProducto.textContent = idEdicion ? "Actualizando..." : "Guardando...";
 
-          limpiarFormulario();
-          refrescarTodo();
+          try {
+            if (idEdicion) {
+              await actualizarProducto(idEdicion, datosProducto);
+              mostrarConfirmacion(`Producto "${datosProducto.nombre}" actualizado correctamente.`);
+            } else {
+              await guardarProducto(datosProducto);
+              mostrarConfirmacion(`Producto "${datosProducto.nombre}" registrado en el catálogo.`);
+            }
+
+            limpiarFormulario();
+            refrescarTodo();
+          } catch (error) {
+            mostrarConfirmacion(
+              error.message || "Ocurrió un error al guardar el producto.",
+              true
+            );
+          } finally {
+            el.btnGuardarProducto.disabled = false;
+            if (el.productoIdEdicion.value) {
+              el.btnGuardarProducto.textContent = "Actualizar producto";
+            } else {
+              el.btnGuardarProducto.textContent =
+                textoOriginalBtn === "Actualizando..." ? "Guardar producto" : "Guardar producto";
+            }
+          }
         });
 
         el.btnLimpiarFormulario.addEventListener("click", limpiarFormulario);
@@ -3362,19 +3533,34 @@
           }
         });
 
-        el.btnConfirmarEliminar.addEventListener("click", () => {
+        el.btnConfirmarEliminar.addEventListener("click", async () => {
           if (!estadoUI.idPendienteEliminar) return;
-          const prod = obtenerProductoPorId(estadoUI.idPendienteEliminar);
-          const eliminado = eliminarProducto(estadoUI.idPendienteEliminar);
-          if (eliminado) {
-            if (el.productoIdEdicion.value === estadoUI.idPendienteEliminar) {
-              limpiarFormulario();
+          const idAEliminar = estadoUI.idPendienteEliminar;
+          const prod = obtenerProductoPorId(idAEliminar);
+
+          el.btnConfirmarEliminar.disabled = true;
+          el.btnConfirmarEliminar.textContent = "Eliminando...";
+
+          try {
+            const eliminado = await eliminarProducto(idAEliminar);
+            if (eliminado) {
+              if (el.productoIdEdicion.value === idAEliminar) {
+                limpiarFormulario();
+              }
+              mostrarConfirmacion(`Producto "${prod ? prod.nombre : ""}" eliminado del catálogo.`);
+              refrescarTodo();
             }
-            mostrarConfirmacion(`Producto "${prod ? prod.nombre : ""}" eliminado del catálogo.`);
-            refrescarTodo();
+          } catch (error) {
+            mostrarConfirmacion(
+              error.message || "No se pudo eliminar el producto.",
+              true
+            );
+          } finally {
+            el.btnConfirmarEliminar.disabled = false;
+            el.btnConfirmarEliminar.textContent = "Sí, eliminar";
+            estadoUI.idPendienteEliminar = null;
+            el.modalEliminar.classList.remove("is-open");
           }
-          estadoUI.idPendienteEliminar = null;
-          el.modalEliminar.classList.remove("is-open");
         });
 
         // Maqueta interactiva de Ventas (POS)
@@ -3420,8 +3606,9 @@
       /* =======================================================================
          10. ARRANQUE DE LA APLICACIÓN
          ======================================================================= */
-      (function iniciarAplicacion() {
+      (async function iniciarAplicacion() {
         inicializarEventos();
+        await sincronizarDesdeSupabase();
         refrescarTodo();
       })();
     </script>

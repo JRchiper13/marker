@@ -1043,6 +1043,8 @@
       }
 
       .pos-item-btn {
+        -webkit-appearance: none;
+        appearance: none;
         width: 100%;
         min-width: 0;
         border: 1px solid var(--border-subtle);
@@ -1059,11 +1061,13 @@
       }
 
       .pos-item-thumb {
-        width: 54px;
-        height: 54px;
+        width: 62px;
+        min-width: 62px;
+        height: 62px;
+        min-height: 62px;
         border-radius: var(--radius-sm);
         border: 1px solid var(--border-subtle);
-        background-color: var(--bg-subtle);
+        background-color: #ffffff;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -4904,12 +4908,13 @@
       function obtenerUrlImagenSegura(urlBruta) {
         const valor = String(urlBruta || "").trim();
         if (!valor) return "";
+        const lower = valor.toLowerCase();
         if (
-          valor.startsWith("data:image/") ||
-          valor.startsWith("https://") ||
-          valor.startsWith("http://") ||
-          valor.startsWith("blob:") ||
-          valor.startsWith("/")
+          lower.startsWith("data:image/") ||
+          lower.startsWith("https://") ||
+          lower.startsWith("http://") ||
+          lower.startsWith("blob:") ||
+          lower.startsWith("/")
         ) {
           return valor;
         }

@@ -53,6 +53,7 @@ interface VentaFilaDB {
   id: string;
   fecha: string;
   sucursal_id: string;
+  caja?: string | null;
   items: ItemVentaEntrada[];
   total: number | string;
   metodo_pago: string;
@@ -131,6 +132,7 @@ function mapearFilaAVenta(fila: VentaFilaDB) {
     id: fila.id,
     fecha: fila.fecha,
     sucursalId: fila.sucursal_id,
+    caja: fila.caja || 'Caja 1',
     items: Array.isArray(fila.items) ? fila.items : [],
     total: Number(fila.total),
     metodoPago: fila.metodo_pago,
@@ -385,7 +387,22 @@ export function crearAppApi(): Express {
         });
       }
 
-      return res.status(201).json(mapearFilaAProducto(data as ProductoFilaDB));
+      const productoCreado = mapearFilaAProducto(data as ProductoFilaDB);
+
+      if (productoCreado.stockActual > 0) {
+        await supabase.from('movimientos_inventario').insert({
+          sucursal_id: productoCreado.sucursalId,
+          producto_id: productoCreado.id,
+          producto_nombre: productoCreado.nombre,
+          tipo: 'entrada',
+          cantidad: productoCreado.stockActual,
+          stock_anterior: 0,
+          stock_nuevo: productoCreado.stockActual,
+          motivo: 'Stock inicial al registrar producto',
+        });
+      }
+
+      return res.status(201).json(productoCreado);
     } catch (err) {
       console.error('Excepción en POST /api/productos:', err);
       return res.status(500).json({ error: 'Error interno al guardar el producto.' });
@@ -408,6 +425,16 @@ export function crearAppApi(): Express {
     }
 
     try {
+      const { data: prodPrevio } = await supabase
+        .from('productos')
+        .select('stock_actual')
+        .eq('id', id)
+        .single();
+      const stockAnterior =
+        prodPrevio && typeof prodPrevio.stock_actual === 'number'
+          ? Number(prodPrevio.stock_actual)
+          : null;
+
       const { data, error } = await supabase
         .from('productos')
         .update({
@@ -448,7 +475,22 @@ export function crearAppApi(): Express {
         return res.status(404).json({ error: 'Producto no encontrado.' });
       }
 
-      return res.json(mapearFilaAProducto(data as ProductoFilaDB));
+      const productoActualizado = mapearFilaAProducto(data as ProductoFilaDB);
+      if (stockAnterior !== null && productoActualizado.stockActual !== stockAnterior) {
+        const diff = productoActualizado.stockActual - stockAnterior;
+        await supabase.from('movimientos_inventario').insert({
+          sucursal_id: productoActualizado.sucursalId,
+          producto_id: productoActualizado.id,
+          producto_nombre: productoActualizado.nombre,
+          tipo: diff > 0 ? 'entrada' : 'salida',
+          cantidad: Math.abs(diff),
+          stock_anterior: stockAnterior,
+          stock_nuevo: productoActualizado.stockActual,
+          motivo: 'Ajuste desde edición de producto',
+        });
+      }
+
+      return res.json(productoActualizado);
     } catch (err) {
       console.error('Excepción en PUT /api/productos/:id:', err);
       return res.status(500).json({ error: 'Error interno al actualizar el producto.' });
@@ -534,6 +576,7 @@ export function crearAppApi(): Express {
     }
 
     const sucursalId = String(req.body?.sucursalId ?? 'sucursal-principal').trim();
+    const caja = String(req.body?.caja ?? 'Caja 1').trim() || 'Caja 1';
     const metodoPagoRaw = String(req.body?.metodoPago ?? 'Efectivo').trim();
     if (metodoPagoRaw !== 'Efectivo' && metodoPagoRaw !== 'QR') {
       return res.status(400).json({ error: 'Método de pago no válido. Solo se admite Efectivo o QR.' });
@@ -549,7 +592,7 @@ export function crearAppApi(): Express {
       const ids = items.map((i) => i.productoId);
       const { data: productosDB, error: errFetch } = await supabase
         .from('productos')
-        .select('id, nombre, stock_actual, precio_venta')
+        .select('id, nombre, stock_actual, precio_venta, sucursal_id')
         .in('id', ids);
 
       if (errFetch) {
@@ -560,9 +603,13 @@ export function crearAppApi(): Express {
       }
 
       const mapaProductos = new Map(
-        ((productosDB ?? []) as Array<{ id: string; nombre: string; stock_actual: number; precio_venta: number | string }>).map(
-          (p) => [p.id, p]
-        )
+        ((productosDB ?? []) as Array<{
+          id: string;
+          nombre: string;
+          stock_actual: number;
+          precio_venta: number | string;
+          sucursal_id: string;
+        }>).map((p) => [p.id, p])
       );
 
       let totalCalculado = 0;
@@ -595,8 +642,11 @@ export function crearAppApi(): Express {
 
       totalCalculado = Number(totalCalculado.toFixed(2));
 
-      // Descontar stock de cada producto en Supabase
+      // Descontar stock de cada producto y registrar salida en Kardex
       const productosActualizados: Array<ReturnType<typeof mapearFilaAProducto>> = [];
+      const movimientosRegistrados: Array<ReturnType<typeof mapearFilaAMovimiento>> = [];
+      let tablaMovimientosFaltante = false;
+
       for (const item of itemsValidados) {
         const prod = mapaProductos.get(item.productoId)!;
         const nuevoStock = prod.stock_actual - item.cantidad;
@@ -615,13 +665,50 @@ export function crearAppApi(): Express {
           return res.status(500).json({ error: 'Error al descontar el stock del producto.' });
         }
         productosActualizados.push(mapearFilaAProducto(updated as ProductoFilaDB));
+
+        const motivoVenta = `Venta (${metodoPago} · ${caja})`;
+        const { data: movInsertado, error: errMovVenta } = await supabase
+          .from('movimientos_inventario')
+          .insert({
+            sucursal_id: prod.sucursal_id || sucursalId,
+            producto_id: prod.id,
+            producto_nombre: prod.nombre,
+            tipo: 'salida',
+            cantidad: item.cantidad,
+            stock_anterior: prod.stock_actual,
+            stock_nuevo: nuevoStock,
+            motivo: motivoVenta,
+          })
+          .select()
+          .single();
+
+        if (errMovVenta) {
+          if (errMovVenta.code === '42P01' || errMovVenta.code === 'PGRST205') {
+            tablaMovimientosFaltante = true;
+          }
+          movimientosRegistrados.push({
+            id: `mov_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            fecha: new Date().toISOString(),
+            sucursalId: prod.sucursal_id || sucursalId,
+            productoId: prod.id,
+            productoNombre: prod.nombre,
+            tipo: 'salida',
+            cantidad: item.cantidad,
+            stockAnterior: prod.stock_actual,
+            stockNuevo: nuevoStock,
+            motivo: motivoVenta,
+          });
+        } else if (movInsertado) {
+          movimientosRegistrados.push(mapearFilaAMovimiento(movInsertado as MovimientoInvFilaDB));
+        }
       }
 
-      // Guardar el registro de venta en tabla ventas (si existe)
-      const { data: ventaInsertada, error: errVenta } = await supabase
+      // Guardar el registro de venta en tabla ventas (con fallback si aún no existe columna caja)
+      let { data: ventaInsertada, error: errVenta } = await supabase
         .from('ventas')
         .insert({
           sucursal_id: sucursalId,
+          caja,
           items: itemsValidados,
           total: totalCalculado,
           metodo_pago: metodoPago,
@@ -629,13 +716,29 @@ export function crearAppApi(): Express {
         .select()
         .single();
 
+      if (errVenta && (errVenta.code === '42703' || errVenta.code === 'PGRST204')) {
+        const retry = await supabase
+          .from('ventas')
+          .insert({
+            sucursal_id: sucursalId,
+            items: itemsValidados,
+            total: totalCalculado,
+            metodo_pago: metodoPago,
+          })
+          .select()
+          .single();
+        ventaInsertada = retry.data;
+        errVenta = retry.error;
+      }
+
       const ventaRespuesta =
         !errVenta && ventaInsertada
-          ? mapearFilaAVenta(ventaInsertada as VentaFilaDB)
+          ? { ...mapearFilaAVenta(ventaInsertada as VentaFilaDB), caja: (ventaInsertada as VentaFilaDB).caja || caja }
           : {
               id: `vta_${Date.now()}`,
               fecha: new Date().toISOString(),
               sucursalId,
+              caja,
               items: itemsValidados,
               total: totalCalculado,
               metodoPago,
@@ -644,6 +747,8 @@ export function crearAppApi(): Express {
       return res.status(201).json({
         venta: ventaRespuesta,
         productosActualizados,
+        movimientosRegistrados,
+        tablaMovimientosFaltante,
       });
     } catch (err) {
       console.error('Excepción en POST /api/ventas:', err);
@@ -679,6 +784,7 @@ export function crearAppApi(): Express {
       const { data, error } = await query;
       if (error) {
         if (error.code === '42P01' || error.code === 'PGRST205') {
+          res.setHeader('X-Movimientos-Tabla-Faltante', '1');
           return res.json([]);
         }
         console.error('Error al leer movimientos de inventario:', error);
@@ -779,6 +885,17 @@ export function crearAppApi(): Express {
         .select()
         .single();
 
+      const tablaMovimientosFaltante = Boolean(
+        errMov && (errMov.code === '42P01' || errMov.code === 'PGRST205')
+      );
+
+      if (errMov && !tablaMovimientosFaltante) {
+        console.error('Error insertando movimiento en Supabase:', errMov);
+        return res.status(500).json({
+          error: traducirErrorSupabase(errMov, 'No se pudo guardar el movimiento en Supabase.'),
+        });
+      }
+
       const movimientoRespuesta =
         !errMov && movInsertado
           ? mapearFilaAMovimiento(movInsertado as MovimientoInvFilaDB)
@@ -798,6 +915,7 @@ export function crearAppApi(): Express {
       return res.status(201).json({
         productoActualizado: mapearFilaAProducto(updated as ProductoFilaDB),
         movimiento: movimientoRespuesta,
+        tablaMovimientosFaltante,
       });
     } catch (err) {
       console.error('Excepción en POST /api/inventario/movimientos:', err);

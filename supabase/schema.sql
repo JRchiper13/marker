@@ -50,10 +50,13 @@ create table if not exists public.ventas (
   id uuid primary key default gen_random_uuid(),
   fecha timestamptz not null default now(),
   sucursal_id text not null references public.sucursales(id) on update cascade,
+  caja text not null default 'Caja 1',
   items jsonb not null,
   total numeric(12, 2) not null check (total >= 0),
   metodo_pago text not null
 );
+
+alter table public.ventas add column if not exists caja text not null default 'Caja 1';
 
 create index if not exists idx_ventas_sucursal_fecha on public.ventas (sucursal_id, fecha desc);
 

@@ -1045,13 +1045,43 @@
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-md);
         background-color: var(--bg-surface);
-        padding: 12px 14px;
+        padding: 10px 12px;
         text-align: left;
         cursor: pointer;
         display: flex;
-        flex-direction: column;
-        gap: 6px;
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
         transition: border-color var(--transition-fast), background-color var(--transition-fast);
+      }
+
+      .pos-item-thumb {
+        width: 54px;
+        height: 54px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-subtle);
+        background-color: var(--bg-subtle);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+        color: var(--text-muted);
+      }
+
+      .pos-item-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .pos-item-info {
+        min-width: 0;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
       }
 
       .pos-item-btn:hover {
@@ -1073,6 +1103,35 @@
         gap: 10px;
         padding: 10px 0;
         border-bottom: 1px solid var(--border-subtle);
+      }
+
+      .pos-cart-main {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        flex: 1;
+      }
+
+      .pos-cart-thumb {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-subtle);
+        background-color: var(--bg-subtle);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+        color: var(--text-muted);
+      }
+
+      .pos-cart-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
       }
 
       .pos-qty-controls {
@@ -1306,7 +1365,7 @@
       /* Maqueta Reportes */
       .reports-grid {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 16px;
       }
 
@@ -1596,6 +1655,29 @@
         font-size: 0.85rem;
         font-weight: 600;
         color: var(--text-secondary);
+      }
+
+      .pos-pay-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .history-toolbar {
+        padding: 14px 24px;
+        border-bottom: 1px solid var(--border-subtle);
+        background-color: var(--bg-hover);
+        display: grid;
+        grid-template-columns: minmax(180px, 1fr) minmax(160px, 1fr);
+        gap: 12px;
+      }
+
+      @media (max-width: 680px) {
+        .pos-pay-grid,
+        .history-toolbar {
+          grid-template-columns: 1fr;
+        }
       }
 
       .pos-print-check {
@@ -2523,12 +2605,32 @@
                 <div class="panel-body">
                   <div id="posCarritoLista" class="pos-cart-list"></div>
 
-                  <div class="field-group" style="margin-bottom: 14px">
-                    <label for="posMetodoPago" class="field-label">Método de pago</label>
-                    <select id="posMetodoPago" class="select-control">
-                      <option value="Efectivo">Efectivo</option>
-                      <option value="QR">QR</option>
-                    </select>
+                  <div class="pos-pay-grid">
+                    <div class="field-group">
+                      <label for="posCajaCobro" class="field-label">Caja que cobra</label>
+                      <input
+                        type="text"
+                        id="posCajaCobro"
+                        list="listaCajasPOS"
+                        class="input-control"
+                        value="Caja 1"
+                        placeholder="Ej. Caja 1"
+                        autocomplete="off"
+                      />
+                      <datalist id="listaCajasPOS">
+                        <option value="Caja 1"></option>
+                        <option value="Caja 2"></option>
+                        <option value="Caja 3"></option>
+                        <option value="Caja Principal"></option>
+                      </datalist>
+                    </div>
+                    <div class="field-group">
+                      <label for="posMetodoPago" class="field-label">Método de pago</label>
+                      <select id="posMetodoPago" class="select-control">
+                        <option value="Efectivo">Efectivo</option>
+                        <option value="QR">QR</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div class="pos-totals">
@@ -2655,6 +2757,50 @@
                 </div>
               </div>
             </div>
+
+            <!-- Historial de ventas: cuándo y qué caja cobró -->
+            <section id="panelHistorialVentas" class="panel" aria-labelledby="tituloHistorialVentas">
+              <div class="panel-header">
+                <div>
+                  <h2 id="tituloHistorialVentas" class="panel-title">Historial de ventas</h2>
+                  <p id="subtituloHistorialVentas" class="panel-subtitle">
+                    Registro de cuándo se cobró cada venta y qué caja realizó el cobro.
+                  </p>
+                </div>
+              </div>
+
+              <div class="history-toolbar">
+                <select id="filtroHistorialCaja" class="select-control" aria-label="Filtrar ventas por caja">
+                  <option value="todas">Todas las cajas</option>
+                </select>
+                <select id="filtroHistorialMetodo" class="select-control" aria-label="Filtrar ventas por método de pago">
+                  <option value="todos">Todos los métodos (Efectivo y QR)</option>
+                  <option value="Efectivo">Solo Efectivo</option>
+                  <option value="QR">Solo QR</option>
+                </select>
+              </div>
+
+              <div class="table-scroll">
+                <table class="products-table" style="min-width: 720px">
+                  <thead>
+                    <tr>
+                      <th>Fecha y hora (Cuándo)</th>
+                      <th>Caja que cobró</th>
+                      <th>Productos vendidos</th>
+                      <th>Pago</th>
+                      <th class="is-num">Total</th>
+                      <th>Factura</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tablaHistorialVentasBody"></tbody>
+                </table>
+              </div>
+
+              <div id="posHistorialVacio" class="empty-state" style="display: none">
+                <h3>Sin ventas registradas</h3>
+                <p>Cada cobro realizado aparecerá aquí con su fecha, hora y caja responsable.</p>
+              </div>
+            </section>
           </section>
 
           <!-- =================================================================
@@ -3007,6 +3153,18 @@
                   <ul id="reporteStockCritico" class="report-list"></ul>
                 </div>
               </article>
+
+              <article class="panel">
+                <div class="panel-header">
+                  <div>
+                    <h2 class="panel-title">Cobros por caja (hoy)</h2>
+                    <p class="panel-subtitle">Total cobrado según cada caja</p>
+                  </div>
+                </div>
+                <div class="panel-body">
+                  <ul id="reporteVentasPorCaja" class="report-list"></ul>
+                </div>
+              </article>
             </div>
           </section>
         </main>
@@ -3349,6 +3507,7 @@
       const CLAVE_LOCAL_QR_COBRO = "minimarket_bolivia_qr_cobro_v1";
       const CLAVE_LOCAL_ULTIMO_COMPROBANTE = "minimarket_bolivia_ultimo_comprobante_v1";
       const CLAVE_LOCAL_FORMATO_IMPRESION = "minimarket_bolivia_formato_impresion_v1";
+      const CLAVE_LOCAL_CAJA_ACTIVA = "minimarket_bolivia_caja_activa_v1";
       let usandoRespaldoLocal = false;
 
       const sucursalesPorDefecto = [
@@ -3502,10 +3661,15 @@
             respVentas.ok && parsedVentas.esJson && Array.isArray(parsedVentas.data)
               ? parsedVentas.data
               : [];
-          baseDatosMemoria.movimientos =
-            respMovs.ok && parsedMovs.esJson && Array.isArray(parsedMovs.data)
-              ? parsedMovs.data
-              : [];
+          const tablaMovFaltante = respMovs.headers.get("x-movimientos-tabla-faltante") === "1";
+          if (tablaMovFaltante) {
+            baseDatosMemoria.movimientos = leerListaLocal(CLAVE_LOCAL_MOVIMIENTOS, []);
+          } else {
+            baseDatosMemoria.movimientos =
+              respMovs.ok && parsedMovs.esJson && Array.isArray(parsedMovs.data)
+                ? parsedMovs.data
+                : [];
+          }
           actualizarSelectoresSucursal();
         } catch (error) {
           usandoRespaldoLocal = true;
@@ -3579,6 +3743,41 @@
         return baseDatosMemoria.productos.find((p) => p.id === id) || null;
       }
 
+      function registrarMovimientoLocalEnMemoria(datosMov) {
+        const nuevoMov = {
+          id: `mov_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+          fecha: new Date().toISOString(),
+          sucursalId: datosMov.sucursalId || "sucursal-principal",
+          productoId: datosMov.productoId,
+          productoNombre: datosMov.productoNombre,
+          tipo: datosMov.tipo,
+          cantidad: Number(datosMov.cantidad),
+          stockAnterior: Number(datosMov.stockAnterior),
+          stockNuevo: Number(datosMov.stockNuevo),
+          motivo: datosMov.motivo || "",
+        };
+        baseDatosMemoria.movimientos.unshift(nuevoMov);
+        guardarListaLocal(CLAVE_LOCAL_MOVIMIENTOS, baseDatosMemoria.movimientos);
+        return nuevoMov;
+      }
+
+      async function refrescarMovimientosDesdeServidor() {
+        try {
+          const resp = await fetch("/api/inventario/movimientos");
+          const parsed = await leerJsonSeguro(resp);
+          if (resp.headers.get("x-movimientos-tabla-faltante") === "1") {
+            return false;
+          }
+          if (resp.ok && parsed.esJson && Array.isArray(parsed.data)) {
+            baseDatosMemoria.movimientos = parsed.data;
+            return true;
+          }
+        } catch (_err) {
+          // Ignorar error de red transitorio
+        }
+        return false;
+      }
+
       async function guardarProducto(datosProducto) {
         if (!usandoRespaldoLocal) {
           const resp = await fetch("/api/productos", {
@@ -3593,6 +3792,21 @@
             throw new Error((body && body.error) || "No se pudo guardar el producto en Supabase.");
           } else {
             baseDatosMemoria.productos.unshift(body);
+            if (body.stockActual > 0) {
+              const sincronizado = await refrescarMovimientosDesdeServidor();
+              if (!sincronizado) {
+                registrarMovimientoLocalEnMemoria({
+                  sucursalId: body.sucursalId,
+                  productoId: body.id,
+                  productoNombre: body.nombre,
+                  tipo: "entrada",
+                  cantidad: body.stockActual,
+                  stockAnterior: 0,
+                  stockNuevo: body.stockActual,
+                  motivo: "Stock inicial al registrar producto",
+                });
+              }
+            }
             return body;
           }
         }
@@ -3606,10 +3820,25 @@
         };
         baseDatosMemoria.productos.unshift(nuevoRegistro);
         guardarProductosLocales(baseDatosMemoria.productos);
+        if (nuevoRegistro.stockActual > 0) {
+          registrarMovimientoLocalEnMemoria({
+            sucursalId: nuevoRegistro.sucursalId,
+            productoId: nuevoRegistro.id,
+            productoNombre: nuevoRegistro.nombre,
+            tipo: "entrada",
+            cantidad: nuevoRegistro.stockActual,
+            stockAnterior: 0,
+            stockNuevo: nuevoRegistro.stockActual,
+            motivo: "Stock inicial al registrar producto",
+          });
+        }
         return nuevoRegistro;
       }
 
       async function actualizarProducto(id, datosActualizados) {
+        const previo = obtenerProductoPorId(id);
+        const stockAnterior = previo ? Number(previo.stockActual) : null;
+
         if (!usandoRespaldoLocal) {
           const resp = await fetch(`/api/productos/${encodeURIComponent(id)}`, {
             method: "PUT",
@@ -3625,6 +3854,22 @@
             const indice = baseDatosMemoria.productos.findIndex((p) => p.id === id);
             if (indice !== -1) {
               baseDatosMemoria.productos[indice] = body;
+            }
+            if (stockAnterior !== null && body.stockActual !== stockAnterior) {
+              const sincronizado = await refrescarMovimientosDesdeServidor();
+              if (!sincronizado) {
+                const diff = body.stockActual - stockAnterior;
+                registrarMovimientoLocalEnMemoria({
+                  sucursalId: body.sucursalId,
+                  productoId: body.id,
+                  productoNombre: body.nombre,
+                  tipo: diff > 0 ? "entrada" : "salida",
+                  cantidad: Math.abs(diff),
+                  stockAnterior,
+                  stockNuevo: body.stockActual,
+                  motivo: "Ajuste desde edición de producto",
+                });
+              }
             }
             return body;
           }
@@ -3642,6 +3887,19 @@
         };
         baseDatosMemoria.productos[indice] = actualizado;
         guardarProductosLocales(baseDatosMemoria.productos);
+        if (stockAnterior !== null && actualizado.stockActual !== stockAnterior) {
+          const diff = actualizado.stockActual - stockAnterior;
+          registrarMovimientoLocalEnMemoria({
+            sucursalId: actualizado.sucursalId,
+            productoId: actualizado.id,
+            productoNombre: actualizado.nombre,
+            tipo: diff > 0 ? "entrada" : "salida",
+            cantidad: Math.abs(diff),
+            stockAnterior,
+            stockNuevo: actualizado.stockActual,
+            motivo: "Ajuste desde edición de producto",
+          });
+        }
         return actualizado;
       }
 
@@ -3669,13 +3927,15 @@
         return true;
       }
 
-      async function registrarVenta(sucursalId, itemsCarrito, metodoPago) {
+      async function registrarVenta(sucursalId, itemsCarrito, metodoPago, cajaCobro = "Caja 1") {
+        const cajaLimpia = String(cajaCobro || "Caja 1").trim() || "Caja 1";
         if (!usandoRespaldoLocal) {
           const resp = await fetch("/api/ventas", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               sucursalId,
+              caja: cajaLimpia,
               metodoPago,
               items: itemsCarrito.map((i) => ({
                 productoId: i.productoId,
@@ -3698,7 +3958,14 @@
               });
             }
             if (body.venta) {
+              if (!body.venta.caja) body.venta.caja = cajaLimpia;
               baseDatosMemoria.ventas.unshift(body.venta);
+            }
+            if (Array.isArray(body.movimientosRegistrados) && body.movimientosRegistrados.length > 0) {
+              baseDatosMemoria.movimientos.unshift(...body.movimientosRegistrados);
+              if (body.tablaMovimientosFaltante) {
+                guardarListaLocal(CLAVE_LOCAL_MOVIMIENTOS, baseDatosMemoria.movimientos);
+              }
             }
             return body.venta;
           }
@@ -3716,13 +3983,24 @@
         itemsCarrito.forEach((item) => {
           const prod = baseDatosMemoria.productos.find((p) => p.id === item.productoId);
           if (prod) {
+            const stockAnterior = Number(prod.stockActual);
             prod.stockActual -= item.cantidad;
             prod.actualizadoFecha = new Date().toISOString();
+            registrarMovimientoLocalEnMemoria({
+              sucursalId: prod.sucursalId || sucursalId,
+              productoId: prod.id,
+              productoNombre: prod.nombre,
+              tipo: "salida",
+              cantidad: item.cantidad,
+              stockAnterior,
+              stockNuevo: prod.stockActual,
+              motivo: `Venta (${metodoPago} · ${cajaLimpia})`,
+            });
           }
         });
         guardarProductosLocales(baseDatosMemoria.productos);
 
-        const nuevaVenta = crearEstructuraVenta(sucursalId, itemsCarrito, metodoPago);
+        const nuevaVenta = crearEstructuraVenta(sucursalId, itemsCarrito, metodoPago, cajaLimpia);
         nuevaVenta.items = itemsCarrito.map((i) => ({ ...i }));
         baseDatosMemoria.ventas.unshift(nuevaVenta);
         guardarListaLocal(CLAVE_LOCAL_VENTAS, baseDatosMemoria.ventas);
@@ -3788,6 +4066,9 @@
             }
             if (body.movimiento) {
               baseDatosMemoria.movimientos.unshift(body.movimiento);
+              if (body.tablaMovimientosFaltante) {
+                guardarListaLocal(CLAVE_LOCAL_MOVIMIENTOS, baseDatosMemoria.movimientos);
+              }
             }
             return body.movimiento;
           }
@@ -3886,7 +4167,7 @@
        *   2. Descontar `item.cantidad` del `stockActual` de cada producto vendido
        *      mediante una transacción atómica en la base de datos.
        */
-      function crearEstructuraVenta(sucursalId, itemsCarrito, metodoPago) {
+      function crearEstructuraVenta(sucursalId, itemsCarrito, metodoPago, caja = "Caja 1") {
         const total = itemsCarrito.reduce(
           (acum, item) => acum + item.cantidad * item.precioUnitario,
           0
@@ -3895,6 +4176,7 @@
           id: `vta_${Date.now()}`,
           fecha: new Date().toISOString(),
           sucursalId,
+          caja: String(caja || "Caja 1").trim() || "Caja 1",
           items: itemsCarrito.map((item) => ({
             productoId: item.productoId,
             cantidad: item.cantidad,
@@ -4066,7 +4348,13 @@
         posCarritoLista: document.getElementById("posCarritoLista"),
         posSubtotal: document.getElementById("posSubtotal"),
         posTotal: document.getElementById("posTotal"),
+        posCajaCobro: document.getElementById("posCajaCobro"),
         posMetodoPago: document.getElementById("posMetodoPago"),
+        filtroHistorialCaja: document.getElementById("filtroHistorialCaja"),
+        filtroHistorialMetodo: document.getElementById("filtroHistorialMetodo"),
+        tablaHistorialVentasBody: document.getElementById("tablaHistorialVentasBody"),
+        posHistorialVacio: document.getElementById("posHistorialVacio"),
+        subtituloHistorialVentas: document.getElementById("subtituloHistorialVentas"),
         posEfectivoPanel: document.getElementById("posEfectivoPanel"),
         posMontoRecibido: document.getElementById("posMontoRecibido"),
         posCambioBox: document.getElementById("posCambioBox"),
@@ -4108,6 +4396,7 @@
         reporteVentasDia: document.getElementById("reporteVentasDia"),
         reporteMasVendidos: document.getElementById("reporteMasVendidos"),
         reporteStockCritico: document.getElementById("reporteStockCritico"),
+        reporteVentasPorCaja: document.getElementById("reporteVentasPorCaja"),
       };
 
       /* =======================================================================
@@ -4694,7 +4983,8 @@
         actualizarKPIs();
         renderizarTablaProductos();
         if (estadoUI.seccionActiva === "ventas") renderizarPOS();
-        if (estadoUI.seccionActiva === "inventario") renderizarInventario();
+        renderizarHistorialVentas();
+        renderizarInventario();
         if (estadoUI.seccionActiva === "reportes") renderizarReportesMaqueta();
       }
 
@@ -4869,10 +5159,13 @@
             .join("");
         }
 
-        // Renderizar Kardex de movimientos recientes
-        const movs = baseDatosMemoria.movimientos.filter(
-          (m) => estadoUI.sucursalActiva === "todas" || m.sucursalId === estadoUI.sucursalActiva
-        );
+        // Renderizar Kardex de movimientos recientes (ordenado del más reciente al más antiguo)
+        const movs = baseDatosMemoria.movimientos
+          .filter(
+            (m) => estadoUI.sucursalActiva === "todas" || m.sucursalId === estadoUI.sucursalActiva
+          )
+          .slice()
+          .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 
         if (movs.length === 0) {
           el.tablaMovimientosBody.innerHTML = "";
@@ -4954,9 +5247,23 @@
             nombre: prod.nombre,
             cantidad: 1,
             precioUnitario: prod.precioVenta,
+            imagenDataUrl: prod.imagenDataUrl || "",
           });
         }
         renderizarPOS();
+      }
+
+      function renderizarMiniaturaPOS(imagenDataUrl, nombre) {
+        if (imagenDataUrl) {
+          return `<img src="${imagenDataUrl}" alt="${escaparHTML(nombre)}" />`;
+        }
+        return `
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
+        `;
       }
 
       function renderizarPOS() {
@@ -4982,11 +5289,16 @@
                 ${agotado ? "disabled" : ""}
                 style="${agotado ? "opacity: 0.55; cursor: not-allowed;" : ""}"
               >
-                <strong style="font-size: 0.92rem">${escaparHTML(p.nombre)}</strong>
-                <span class="product-meta font-mono-num">${escaparHTML(p.codigoBarras)}</span>
-                <span class="font-mono-num" style="color: ${agotado ? "var(--red-accent)" : "var(--green-primary)"}; font-weight: 700;">
-                  ${formatearMoneda(p.precioVenta)} · ${agotado ? "Sin stock" : `Stock: ${p.stockActual}`}
-                </span>
+                <div class="pos-item-thumb">
+                  ${renderizarMiniaturaPOS(p.imagenDataUrl, p.nombre)}
+                </div>
+                <div class="pos-item-info">
+                  <strong style="font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">${escaparHTML(p.nombre)}</strong>
+                  <span class="product-meta font-mono-num">${escaparHTML(p.codigoBarras)}</span>
+                  <span class="font-mono-num" style="color: ${agotado ? "var(--red-accent)" : "var(--green-primary)"}; font-weight: 700; font-size: 0.88rem">
+                    ${formatearMoneda(p.precioVenta)} · ${agotado ? "Sin stock" : `Stock: ${p.stockActual}`}
+                  </span>
+                </div>
               </button>
             `;
             })
@@ -5006,12 +5318,19 @@
         }
 
         el.posCarritoLista.innerHTML = estadoUI.carritoPos
-          .map(
-            (item) => `
+          .map((item) => {
+            const prodRef = obtenerProductoPorId(item.productoId);
+            const imgUrl = item.imagenDataUrl || (prodRef ? prodRef.imagenDataUrl : "");
+            return `
             <div class="pos-cart-row">
-              <div>
-                <div style="font-weight: 600; font-size: 0.92rem">${escaparHTML(item.nombre)}</div>
-                <div class="product-meta font-mono-num">${formatearMoneda(item.precioUnitario)} c/u · Subtotal: ${formatearMoneda(item.precioUnitario * item.cantidad)}</div>
+              <div class="pos-cart-main">
+                <div class="pos-cart-thumb">
+                  ${renderizarMiniaturaPOS(imgUrl, item.nombre)}
+                </div>
+                <div style="min-width: 0">
+                  <div style="font-weight: 600; font-size: 0.92rem">${escaparHTML(item.nombre)}</div>
+                  <div class="product-meta font-mono-num">${formatearMoneda(item.precioUnitario)} c/u · Subtotal: ${formatearMoneda(item.precioUnitario * item.cantidad)}</div>
+                </div>
               </div>
               <div class="pos-qty-controls">
                 <button type="button" class="btn btn-secondary btn-sm" data-pos-qty="-1" data-id="${escaparHTML(item.productoId)}" aria-label="Disminuir cantidad">−</button>
@@ -5019,18 +5338,101 @@
                 <button type="button" class="btn btn-secondary btn-sm" data-pos-qty="1" data-id="${escaparHTML(item.productoId)}" aria-label="Aumentar cantidad">+</button>
               </div>
             </div>
-          `
-          )
+          `;
+          })
           .join("");
 
         const ventaCalculada = crearEstructuraVenta(
           estadoUI.sucursalActiva,
           estadoUI.carritoPos,
-          el.posMetodoPago.value
+          el.posMetodoPago.value,
+          el.posCajaCobro.value
         );
         el.posSubtotal.textContent = formatearMoneda(ventaCalculada.total);
         el.posTotal.textContent = formatearMoneda(ventaCalculada.total);
         actualizarCalculadoraCambioPOS(ventaCalculada.total);
+      }
+
+      function renderizarHistorialVentas() {
+        const ventasSucursal = baseDatosMemoria.ventas
+          .filter((v) => estadoUI.sucursalActiva === "todas" || v.sucursalId === estadoUI.sucursalActiva)
+          .slice()
+          .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+
+        const cajasUnicas = Array.from(
+          new Set([
+            "Caja 1",
+            "Caja 2",
+            "Caja 3",
+            ...ventasSucursal.map((v) => String(v.caja || "Caja 1").trim() || "Caja 1"),
+          ])
+        );
+        const filtroCajaPrevio = el.filtroHistorialCaja.value || "todas";
+        el.filtroHistorialCaja.innerHTML = [
+          '<option value="todas">Todas las cajas</option>',
+          ...cajasUnicas.map((c) => `<option value="${escaparHTML(c)}">${escaparHTML(c)}</option>`),
+        ].join("");
+        if (filtroCajaPrevio === "todas" || cajasUnicas.includes(filtroCajaPrevio)) {
+          el.filtroHistorialCaja.value = filtroCajaPrevio;
+        }
+
+        const filtroCaja = el.filtroHistorialCaja.value;
+        const filtroMetodo = el.filtroHistorialMetodo.value;
+
+        const filtradas = ventasSucursal.filter((v) => {
+          const cajaVenta = String(v.caja || "Caja 1").trim() || "Caja 1";
+          if (filtroCaja !== "todas" && cajaVenta !== filtroCaja) return false;
+          if (filtroMetodo !== "todos" && v.metodoPago !== filtroMetodo) return false;
+          return true;
+        });
+
+        el.subtituloHistorialVentas.textContent = `Mostrando ${filtradas.length} de ${ventasSucursal.length} ventas registradas (cuándo y qué caja cobró).`;
+
+        if (filtradas.length === 0) {
+          el.tablaHistorialVentasBody.innerHTML = "";
+          el.posHistorialVacio.style.display = "block";
+          return;
+        }
+
+        el.posHistorialVacio.style.display = "none";
+        const mapaSucursales = new Map(obtenerSucursales().map((s) => [s.id, s.nombre]));
+
+        el.tablaHistorialVentasBody.innerHTML = filtradas
+          .slice(0, 50)
+          .map((v) => {
+            const cajaVenta = String(v.caja || "Caja 1").trim() || "Caja 1";
+            const nombreSucursal = mapaSucursales.get(v.sucursalId) || v.sucursalId || "Sucursal principal";
+            const resumenItems = (v.items || [])
+              .map((it) => {
+                const prod = obtenerProductoPorId(it.productoId);
+                const nom = it.nombre || (prod ? prod.nombre : "Producto");
+                return `${it.cantidad}× ${nom}`;
+              })
+              .join(", ");
+
+            return `
+              <tr>
+                <td class="font-mono-num">${escaparHTML(formatearFechaHoraLocal(v.fecha))}</td>
+                <td>
+                  <strong>${escaparHTML(cajaVenta)}</strong>
+                  <div class="product-meta">${escaparHTML(nombreSucursal)}</div>
+                </td>
+                <td>${escaparHTML(resumenItems || "—")}</td>
+                <td><strong>${escaparHTML(v.metodoPago || "Efectivo")}</strong></td>
+                <td class="is-num font-mono-num"><strong>${formatearMoneda(v.total)}</strong></td>
+                <td>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    data-ver-factura-id="${escaparHTML(v.id)}"
+                  >
+                    Factura
+                  </button>
+                </td>
+              </tr>
+            `;
+          })
+          .join("");
       }
 
       function obtenerTotalCarritoPOS() {
@@ -5101,6 +5503,7 @@
           horaTexto,
           sucursalNombre: sucursal.nombre || "Sucursal principal",
           sucursalDireccion: sucursal.direccion || "",
+          caja: String(venta.caja || extras.caja || "Caja 1").trim() || "Caja 1",
           clienteNombre: (extras.clienteNombre || "").trim() || "Sin Nombre",
           clienteNit: (extras.clienteNit || "").trim() || "0",
           metodoPago: venta.metodoPago || "Efectivo",
@@ -5167,11 +5570,14 @@
                 <span>Hora: ${escaparHTML(comprobante.horaTexto)}</span>
               </div>
               <div class="receipt-meta-row">
+                <span>Caja: ${escaparHTML(comprobante.caja || "Caja 1")}</span>
+                <span>Pago: ${escaparHTML(comprobante.metodoPago)}</span>
+              </div>
+              <div class="receipt-meta-row">
                 <span>Cliente: ${escaparHTML(comprobante.clienteNombre)}</span>
               </div>
               <div class="receipt-meta-row">
                 <span>NIT / CI: ${escaparHTML(comprobante.clienteNit)}</span>
-                <span>Pago: ${escaparHTML(comprobante.metodoPago)}</span>
               </div>
             </div>
 
@@ -5381,6 +5787,32 @@
           `
           )
           .join("");
+
+        // 4. Cobros por caja en el día
+        const totalesPorCaja = new Map();
+        ventasHoy.forEach((v) => {
+          const cajaNombre = String(v.caja || "Caja 1").trim() || "Caja 1";
+          const actual = totalesPorCaja.get(cajaNombre) || { total: 0, cantidad: 0 };
+          actual.total += Number(v.total || 0);
+          actual.cantidad += 1;
+          totalesPorCaja.set(cajaNombre, actual);
+        });
+
+        if (totalesPorCaja.size === 0) {
+          el.reporteVentasPorCaja.innerHTML = `<li style="color: var(--text-muted)">Aún no hay cobros registrados hoy.</li>`;
+        } else {
+          el.reporteVentasPorCaja.innerHTML = Array.from(totalesPorCaja.entries())
+            .sort((a, b) => b[1].total - a[1].total)
+            .map(
+              ([cajaNombre, info]) => `
+              <li>
+                <span>${escaparHTML(cajaNombre)} (${info.cantidad} vta${info.cantidad === 1 ? "" : "s"}.)</span>
+                <strong class="font-mono-num">${formatearMoneda(info.total)}</strong>
+              </li>
+            `
+            )
+            .join("");
+        }
       }
 
       /* =======================================================================
@@ -5650,6 +6082,42 @@
           }
         });
 
+        el.posCajaCobro.addEventListener("input", () => {
+          const valor = el.posCajaCobro.value.trim();
+          if (!valor) return;
+          try {
+            localStorage.setItem(CLAVE_LOCAL_CAJA_ACTIVA, valor);
+          } catch (_err) {
+            // Ignorar
+          }
+        });
+        el.posCajaCobro.addEventListener("change", () => {
+          const valor = el.posCajaCobro.value.trim() || "Caja 1";
+          el.posCajaCobro.value = valor;
+          try {
+            localStorage.setItem(CLAVE_LOCAL_CAJA_ACTIVA, valor);
+          } catch (_err) {
+            // Ignorar
+          }
+        });
+        el.filtroHistorialCaja.addEventListener("change", renderizarHistorialVentas);
+        el.filtroHistorialMetodo.addEventListener("change", renderizarHistorialVentas);
+        el.tablaHistorialVentasBody.addEventListener("click", (e) => {
+          const btn = e.target.closest("button[data-ver-factura-id]");
+          if (!btn) return;
+          const venta = baseDatosMemoria.ventas.find((v) => v.id === btn.dataset.verFacturaId);
+          if (!venta) return;
+          const itemsConNombre = (venta.items || []).map((it) => {
+            const prod = obtenerProductoPorId(it.productoId);
+            return {
+              ...it,
+              nombre: it.nombre || (prod ? prod.nombre : "Producto"),
+            };
+          });
+          const comp = construirDatosComprobante(venta, itemsConNombre, { caja: venta.caja });
+          abrirModalComprobante(comp);
+        });
+
         el.posMetodoPago.addEventListener("change", renderizarPOS);
         el.posMontoRecibido.addEventListener("input", () => actualizarCalculadoraCambioPOS());
         el.posEfectivoPanel.addEventListener("click", (e) => {
@@ -5813,13 +6281,17 @@
           try {
             const sucursalVenta =
               estadoUI.sucursalActiva === "todas" ? "sucursal-principal" : estadoUI.sucursalActiva;
+            const cajaCobro = el.posCajaCobro.value.trim() || "Caja 1";
+            el.posCajaCobro.value = cajaCobro;
             const ventaRegistrada = await registrarVenta(
               sucursalVenta,
               estadoUI.carritoPos,
-              el.posMetodoPago.value
+              el.posMetodoPago.value,
+              cajaCobro
             );
 
             const comprobante = construirDatosComprobante(ventaRegistrada, itemsParaComprobante, {
+              caja: cajaCobro,
               clienteNombre,
               clienteNit,
               montoRecibido: montoRecibidoNum,
@@ -6568,6 +7040,10 @@
           estadoUI.qrCobroDataUrl = qrGuardado.dataUrl;
           estadoUI.qrCobroNombre = qrGuardado.nombre;
 
+          const cajaGuardada = localStorage.getItem(CLAVE_LOCAL_CAJA_ACTIVA);
+          if (cajaGuardada && cajaGuardada.trim()) {
+            el.posCajaCobro.value = cajaGuardada.trim();
+          }
           const formatoGuardado = localStorage.getItem(CLAVE_LOCAL_FORMATO_IMPRESION);
           if (formatoGuardado && ["ticket80", "ticket58", "carta"].includes(formatoGuardado)) {
             estadoUI.formatoImpresion = formatoGuardado;

@@ -6822,19 +6822,31 @@
         candidatoCodigo: "",
         candidatoConteo: 0,
         candidatoTimestamp: 0,
+        candidatoVideoTime: -1,
+        pasoConfirmacion: "",
+        ultimoFiltroExitoso: "fondo_color",
         detectorNativo: null,
         lectorZXing: null,
         canvasCaptura: null,
         ctxCaptura: null,
         bufferGris: null,
+        histogramaGris: new Uint32Array(256),
         indicePaso: 0,
       };
 
       const PASOS_ESCANEO_COLOR = [
-        "normal",
         "fondo_color",
         "normal",
+        "fondo_color",
         "adaptativo",
+        "tinta_color",
+        "invertido",
+        "completo",
+      ];
+      const PASOS_SECUNDARIOS_NATIVO = [
+        "fondo_color",
+        "adaptativo",
+        "fondo_color",
         "tinta_color",
         "invertido",
         "completo",
@@ -6975,6 +6987,7 @@
         estadoEscaner.candidatoCodigo = "";
         estadoEscaner.candidatoConteo = 0;
         estadoEscaner.candidatoTimestamp = 0;
+        estadoEscaner.pasoConfirmacion = "";
         el.btnLinternaEscaner.style.display = "none";
         el.btnLinternaEscaner.textContent = "Linterna";
       }
@@ -7042,6 +7055,9 @@
       function esLecturaEscanerValida(codigo, formatoBruto = "") {
         if (!codigo || codigo.length < 4) return false;
         const fmt = String(formatoBruto || "").toLowerCase();
+        if (fmt !== "qr_code" && fmt !== "qr" && /[\x00-\x1F]/.test(codigo)) {
+          return false;
+        }
 
         if (fmt === "ean_13" || fmt === "ean13") {
           return codigo.length === 13 && validarDigitoControlGS1(codigo);
@@ -7055,13 +7071,13 @@
         return true;
       }
 
-      function registrarLecturaEscanerConConsenso(codigoBruto, formatoBruto = "") {
+      function registrarLecturaEscanerConConsenso(codigoBruto, formatoBruto = "", modoPaso = "normal") {
         const codigo = String(codigoBruto || "").trim();
-        if (!esLecturaEscanerValida(codigo, formatoBruto)) return;
+        if (!esLecturaEscanerValida(codigo, formatoBruto)) return "invalido";
 
         const ahora = Date.now();
         if (codigo === estadoEscaner.ultimoCodigo && ahora - estadoEscaner.ultimoTimestamp < 1600) {
-          return;
+          return "repetido";
         }
 
         if (
@@ -7077,13 +7093,20 @@
 
         // Exigir 2 cuadros idénticos confirmados para evitar lecturas falsas o dígitos erróneos
         if (estadoEscaner.candidatoConteo < 2) {
-          return;
+          estadoEscaner.candidatoVideoTime = el.escanerVideo.currentTime;
+          estadoEscaner.pasoConfirmacion = modoPaso || "fondo_color";
+          estadoEscaner.ultimoFiltroExitoso = modoPaso || "fondo_color";
+          return "pendiente";
         }
 
         estadoEscaner.candidatoCodigo = "";
         estadoEscaner.candidatoConteo = 0;
         estadoEscaner.candidatoTimestamp = 0;
+        estadoEscaner.candidatoVideoTime = -1;
+        estadoEscaner.pasoConfirmacion = "";
+        estadoEscaner.ultimoFiltroExitoso = modoPaso || "fondo_color";
         procesarCodigoEscaneado(codigo);
+        return "confirmado";
       }
 
       function procesarCodigoEscaneado(codigoBruto) {
@@ -7181,9 +7204,8 @@
           estadoEscaner.bufferGris = new Uint8Array(totalPix);
         }
         const gris = estadoEscaner.bufferGris;
-
-        let minV = 255;
-        let maxV = 0;
+        const hist = estadoEscaner.histogramaGris;
+        hist.fill(0);
 
         if (modoPaso === "tinta_color") {
           for (let p = 0, i = 0; p < totalPix; p++, i += 4) {
@@ -7192,8 +7214,7 @@
             const b = d[i + 2];
             const v = r < g ? (r < b ? r : b) : (g < b ? g : b);
             gris[p] = v;
-            if (v < minV) minV = v;
-            if (v > maxV) maxV = v;
+            hist[v] += 1;
           }
         } else if (modoPaso === "invertido") {
           for (let p = 0, i = 0; p < totalPix; p++, i += 4) {
@@ -7203,19 +7224,17 @@
             const mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
             const v = 255 - mx;
             gris[p] = v;
-            if (v < minV) minV = v;
-            if (v > maxV) maxV = v;
+            hist[v] += 1;
           }
         } else {
-          // "fondo_color" y "adaptativo": max(R, G, B) aclara fondos rojos, azules, verdes o amarillos
+          // "fondo_color" y "adaptativo": max(R, G, B) vuelve claro cualquier fondo rojo, azul, verde o amarillo
           for (let p = 0, i = 0; p < totalPix; p++, i += 4) {
             const r = d[i];
             const g = d[i + 1];
             const b = d[i + 2];
             const v = r > g ? (r > b ? r : b) : (g > b ? g : b);
             gris[p] = v;
-            if (v < minV) minV = v;
-            if (v > maxV) maxV = v;
+            hist[v] += 1;
           }
         }
 
@@ -7249,10 +7268,30 @@
             }
           }
         } else {
-          const rango = Math.max(12, maxV - minV);
+          // Estiramiento por percentiles (4% - 85%): convierte fondos rojo/azul/verde oscuro en blanco limpio
+          // aunque haya logotipos blancos o brillos en las esquinas
+          const metaMin = Math.floor(totalPix * 0.04);
+          const metaMax = Math.floor(totalPix * 0.85);
+          let acum = 0;
+          let pMin = 0;
+          let pMax = 255;
+          let minHallado = false;
+          for (let b = 0; b < 256; b++) {
+            acum += hist[b];
+            if (!minHallado && acum >= metaMin) {
+              pMin = b;
+              minHallado = true;
+            }
+            if (acum >= metaMax) {
+              pMax = b;
+              break;
+            }
+          }
+
+          const rango = Math.max(16, pMax - pMin);
           const escala = 255 / rango;
           for (let p = 0, i = 0; p < totalPix; p++, i += 4) {
-            let norm = (gris[p] - minV) * escala;
+            let norm = (gris[p] - pMin) * escala;
             if (norm < 0) norm = 0;
             else if (norm > 255) norm = 255;
             d[i] = norm;
@@ -7281,9 +7320,9 @@
 
         const esCompleto = modoPaso === "completo";
         const sx = esCompleto ? 0 : Math.round(vw * 0.08);
-        const sy = esCompleto ? 0 : Math.round(vh * 0.14);
+        const sy = esCompleto ? 0 : Math.round(vh * 0.18);
         const sw = esCompleto ? vw : Math.max(200, Math.round(vw * 0.84));
-        const sh = esCompleto ? vh : Math.max(140, Math.round(vh * 0.72));
+        const sh = esCompleto ? vh : Math.max(140, Math.round(vh * 0.64));
 
         const maxAncho = esCompleto ? 960 : 840;
         const escala = sw > maxAncho ? maxAncho / sw : 1;
@@ -7318,33 +7357,88 @@
         return String(fmt || "");
       }
 
+      async function intentarDetectarConPasoNativo(modoPaso) {
+        const fuente =
+          modoPaso === "completo" ? el.escanerVideo : prepararCanvasEscaneo(modoPaso);
+        if (!fuente) return false;
+        const codigos = await estadoEscaner.detectorNativo.detect(fuente);
+        if (codigos && codigos.length > 0 && codigos[0].rawValue) {
+          const estado = registrarLecturaEscanerConConsenso(
+            codigos[0].rawValue,
+            codigos[0].format,
+            modoPaso
+          );
+          return estado === "pendiente" || estado === "confirmado";
+        }
+        return false;
+      }
+
       async function cicloDeteccionEscaner(motor) {
         if (!estadoEscaner.activo) return;
 
+        let esperarMs = motor === "nativo" ? 24 : 28;
+
         try {
           if (el.escanerVideo.readyState >= 2 && el.escanerVideo.videoWidth > 0) {
-            const modoPaso = PASOS_ESCANEO_COLOR[estadoEscaner.indicePaso % PASOS_ESCANEO_COLOR.length];
-            estadoEscaner.indicePaso = (estadoEscaner.indicePaso + 1) % PASOS_ESCANEO_COLOR.length;
+            const ahora = Date.now();
+            const confirmarCon =
+              estadoEscaner.pasoConfirmacion &&
+              ahora - estadoEscaner.candidatoTimestamp <= 750
+                ? estadoEscaner.pasoConfirmacion
+                : "";
 
-            if (motor === "nativo" && estadoEscaner.detectorNativo) {
-              const fuente =
-                modoPaso === "completo" ? el.escanerVideo : prepararCanvasEscaneo(modoPaso);
-              if (fuente) {
-                const codigos = await estadoEscaner.detectorNativo.detect(fuente);
-                if (codigos && codigos.length > 0 && codigos[0].rawValue) {
-                  registrarLecturaEscanerConConsenso(codigos[0].rawValue, codigos[0].format);
+            if (!confirmarCon) {
+              estadoEscaner.pasoConfirmacion = "";
+            }
+
+            const mismoFrame =
+              confirmarCon &&
+              el.escanerVideo.currentTime === estadoEscaner.candidatoVideoTime &&
+              ahora - estadoEscaner.candidatoTimestamp < 42;
+
+            if (mismoFrame) {
+              esperarMs = 12;
+            } else if (motor === "nativo" && estadoEscaner.detectorNativo) {
+              if (confirmarCon) {
+                await intentarDetectarConPasoNativo(confirmarCon);
+                esperarMs = 15;
+              } else {
+                const pasoSec =
+                  PASOS_SECUNDARIOS_NATIVO[
+                    estadoEscaner.indicePaso % PASOS_SECUNDARIOS_NATIVO.length
+                  ];
+                const pasoPrim =
+                  estadoEscaner.indicePaso % 2 === 0
+                    ? "normal"
+                    : estadoEscaner.ultimoFiltroExitoso || "fondo_color";
+                estadoEscaner.indicePaso =
+                  (estadoEscaner.indicePaso + 1) % PASOS_SECUNDARIOS_NATIVO.length;
+
+                let detectado = await intentarDetectarConPasoNativo(pasoPrim);
+                if (!detectado && pasoSec !== pasoPrim && estadoEscaner.activo) {
+                  detectado = await intentarDetectarConPasoNativo(pasoSec);
                 }
+                if (detectado) esperarMs = 15;
               }
             } else if (motor === "zxing" && estadoEscaner.lectorZXing) {
+              const modoPaso =
+                confirmarCon ||
+                PASOS_ESCANEO_COLOR[estadoEscaner.indicePaso % PASOS_ESCANEO_COLOR.length];
+              if (!confirmarCon) {
+                estadoEscaner.indicePaso =
+                  (estadoEscaner.indicePaso + 1) % PASOS_ESCANEO_COLOR.length;
+              }
               const canvas = prepararCanvasEscaneo(modoPaso);
               if (canvas) {
                 try {
                   const resultado = estadoEscaner.lectorZXing.decodeFromCanvas(canvas);
                   if (resultado && typeof resultado.getText === "function") {
-                    registrarLecturaEscanerConConsenso(
+                    const estado = registrarLecturaEscanerConConsenso(
                       resultado.getText(),
-                      obtenerNombreFormatoZXing(resultado)
+                      obtenerNombreFormatoZXing(resultado),
+                      modoPaso
                     );
+                    if (estado === "pendiente") esperarMs = 15;
                   }
                 } catch (_notFound) {
                   // Sin código en este cuadro
@@ -7357,7 +7451,7 @@
         }
 
         if (estadoEscaner.activo) {
-          estadoEscaner.timerId = setTimeout(() => cicloDeteccionEscaner(motor), 45);
+          estadoEscaner.timerId = setTimeout(() => cicloDeteccionEscaner(motor), esperarMs);
         }
       }
 
@@ -7452,6 +7546,7 @@
         estadoEscaner.candidatoCodigo = "";
         estadoEscaner.candidatoConteo = 0;
         estadoEscaner.candidatoTimestamp = 0;
+        estadoEscaner.pasoConfirmacion = "";
 
         el.escanerFeedback.classList.remove("is-visible", "is-error");
         el.escanerFeedback.textContent = "";

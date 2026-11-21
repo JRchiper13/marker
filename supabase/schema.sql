@@ -41,6 +41,8 @@ create table if not exists public.productos (
   constraint productos_sucursal_codigo_unico unique (sucursal_id, codigo_barras)
 );
 
+alter table public.productos add column if not exists imagen_data_url text default '';
+
 create index if not exists idx_productos_sucursal on public.productos (sucursal_id);
 create index if not exists idx_productos_categoria on public.productos (categoria);
 create index if not exists idx_productos_codigo on public.productos (codigo_barras);

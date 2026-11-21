@@ -933,6 +933,7 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
+        display: block;
       }
 
       .product-name {
@@ -1042,6 +1043,8 @@
       }
 
       .pos-item-btn {
+        width: 100%;
+        min-width: 0;
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-md);
         background-color: var(--bg-surface);
@@ -3543,8 +3546,9 @@
       function guardarListaLocal(clave, lista) {
         try {
           localStorage.setItem(clave, JSON.stringify(lista));
+          return true;
         } catch (_err) {
-          // Ignorar errores de cuota
+          return false;
         }
       }
 
@@ -3553,7 +3557,14 @@
       }
 
       function guardarProductosLocales(lista) {
-        guardarListaLocal(CLAVE_LOCAL_PRODUCTOS, lista);
+        const ok = guardarListaLocal(CLAVE_LOCAL_PRODUCTOS, lista);
+        if (!ok && typeof mostrarConfirmacion === "function") {
+          mostrarConfirmacion(
+            "El almacenamiento del navegador está lleno; reduce o quita imágenes antiguas si no se guardan los últimos cambios.",
+            true
+          );
+        }
+        return ok;
       }
 
       function leerQrCobroLocal() {
@@ -3584,8 +3595,9 @@
               JSON.stringify({ dataUrl, nombre: nombre || "QR de cobro" })
             );
           }
+          return true;
         } catch (_err) {
-          // Ignorar errores de cuota
+          return false;
         }
       }
 
@@ -4201,6 +4213,7 @@
         sucursalActiva: "sucursal-principal",
         imagenActualDataUrl: "",
         imagenNombreArchivo: "",
+        promesaImagen: null,
         qrCobroDataUrl: "",
         qrCobroNombre: "",
         ultimoComprobante: null,
@@ -4828,8 +4841,9 @@
               alertaVencHTML = `<span class="alert-note is-warning">${textoDias}</span>`;
             }
 
-            const miniaturaHTML = prod.imagenDataUrl
-              ? `<img src="${prod.imagenDataUrl}" alt="${escaparHTML(prod.nombre)}" />`
+            const urlImagenSegura = obtenerUrlImagenSegura(prod.imagenDataUrl);
+            const miniaturaHTML = urlImagenSegura
+              ? `<img src="${escaparHTML(urlImagenSegura)}" alt="${escaparHTML(prod.nombre)}" />`
               : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
@@ -4887,13 +4901,137 @@
         el.cuerpoTablaProductos.innerHTML = filasHTML;
       }
 
-      function renderizarImagenPreview(dataUrl, nombreArchivo) {
-        estadoUI.imagenActualDataUrl = dataUrl || "";
-        estadoUI.imagenNombreArchivo = nombreArchivo || "";
+      function obtenerUrlImagenSegura(urlBruta) {
+        const valor = String(urlBruta || "").trim();
+        if (!valor) return "";
+        if (
+          valor.startsWith("data:image/") ||
+          valor.startsWith("https://") ||
+          valor.startsWith("http://") ||
+          valor.startsWith("blob:") ||
+          valor.startsWith("/")
+        ) {
+          return valor;
+        }
+        return "";
+      }
 
-        if (dataUrl) {
-          el.imagenPreviewContenedor.innerHTML = `<img src="${dataUrl}" alt="Vista previa del producto" />`;
-          el.imagenNombreArchivo.textContent = nombreArchivo || "Imagen cargada";
+      function comprimirImagenArchivo(archivo, opciones = {}) {
+        const {
+          maxDim = 360,
+          mime = "image/jpeg",
+          calidad = 0.72,
+          maxBytesDataUrl = 220000,
+        } = opciones;
+
+        return new Promise((resolve, reject) => {
+          const usarObjectUrl = typeof URL !== "undefined" && typeof URL.createObjectURL === "function";
+          let objectUrl = "";
+
+          const cargarEnImagen = (fuente) => {
+            const img = new Image();
+            img.onload = () => {
+              if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+                objectUrl = "";
+              }
+              let width = img.naturalWidth || img.width || maxDim;
+              let height = img.naturalHeight || img.height || maxDim;
+              if (width > maxDim || height > maxDim) {
+                if (width > height) {
+                  height = Math.max(1, Math.round((height * maxDim) / width));
+                  width = maxDim;
+                } else {
+                  width = Math.max(1, Math.round((width * maxDim) / height));
+                  height = maxDim;
+                }
+              }
+
+              const canvas = document.createElement("canvas");
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext("2d");
+              ctx.fillStyle = "#ffffff";
+              ctx.fillRect(0, 0, width, height);
+              ctx.drawImage(img, 0, 0, width, height);
+
+              let resultado = canvas.toDataURL(mime, calidad);
+              if (resultado.length > maxBytesDataUrl) {
+                resultado = canvas.toDataURL("image/jpeg", 0.72);
+              }
+              resolve(resultado);
+            };
+            img.onerror = () => {
+              if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+                objectUrl = "";
+                const lector = new FileReader();
+                lector.onload = (ev) => {
+                  const raw = ev.target && ev.target.result;
+                  if (!raw) {
+                    reject(new Error("No se pudo leer el archivo de imagen."));
+                    return;
+                  }
+                  const imgFallback = new Image();
+                  imgFallback.onload = () => {
+                    let w = imgFallback.naturalWidth || imgFallback.width || maxDim;
+                    let h = imgFallback.naturalHeight || imgFallback.height || maxDim;
+                    if (w > maxDim || h > maxDim) {
+                      if (w > h) {
+                        h = Math.max(1, Math.round((h * maxDim) / w));
+                        w = maxDim;
+                      } else {
+                        w = Math.max(1, Math.round((w * maxDim) / h));
+                        h = maxDim;
+                      }
+                    }
+                    const c = document.createElement("canvas");
+                    c.width = w;
+                    c.height = h;
+                    const cx = c.getContext("2d");
+                    cx.fillStyle = "#ffffff";
+                    cx.fillRect(0, 0, w, h);
+                    cx.drawImage(imgFallback, 0, 0, w, h);
+                    let out = c.toDataURL(mime, calidad);
+                    if (out.length > maxBytesDataUrl) {
+                      out = c.toDataURL("image/jpeg", 0.72);
+                    }
+                    resolve(out);
+                  };
+                  imgFallback.onerror = () => {
+                    reject(new Error("Formato de imagen no compatible. Usa JPG, PNG o WEBP."));
+                  };
+                  imgFallback.src = raw;
+                };
+                lector.onerror = () => reject(new Error("No se pudo leer la imagen."));
+                lector.readAsDataURL(archivo);
+                return;
+              }
+              reject(new Error("Formato de imagen no compatible. Usa JPG, PNG o WEBP."));
+            };
+            img.src = fuente;
+          };
+
+          if (usarObjectUrl) {
+            objectUrl = URL.createObjectURL(archivo);
+            cargarEnImagen(objectUrl);
+          } else {
+            const lector = new FileReader();
+            lector.onload = (ev) => cargarEnImagen(ev.target && ev.target.result);
+            lector.onerror = () => reject(new Error("No se pudo leer la imagen."));
+            lector.readAsDataURL(archivo);
+          }
+        });
+      }
+
+      function renderizarImagenPreview(dataUrl, nombreArchivo) {
+        const urlSegura = obtenerUrlImagenSegura(dataUrl);
+        estadoUI.imagenActualDataUrl = urlSegura;
+        estadoUI.imagenNombreArchivo = urlSegura ? nombreArchivo || "Imagen guardada" : "";
+
+        if (urlSegura) {
+          el.imagenPreviewContenedor.innerHTML = `<img src="${escaparHTML(urlSegura)}" alt="Vista previa del producto" />`;
+          el.imagenNombreArchivo.textContent = estadoUI.imagenNombreArchivo;
           el.btnQuitarImagen.style.display = "inline-flex";
         } else {
           el.imagenPreviewContenedor.innerHTML = `
@@ -4982,7 +5120,7 @@
       function refrescarTodo() {
         actualizarKPIs();
         renderizarTablaProductos();
-        if (estadoUI.seccionActiva === "ventas") renderizarPOS();
+        renderizarPOS();
         renderizarHistorialVentas();
         renderizarInventario();
         if (estadoUI.seccionActiva === "reportes") renderizarReportesMaqueta();
@@ -5254,8 +5392,9 @@
       }
 
       function renderizarMiniaturaPOS(imagenDataUrl, nombre) {
-        if (imagenDataUrl) {
-          return `<img src="${imagenDataUrl}" alt="${escaparHTML(nombre)}" />`;
+        const urlSegura = obtenerUrlImagenSegura(imagenDataUrl);
+        if (urlSegura) {
+          return `<img src="${escaparHTML(urlSegura)}" alt="${escaparHTML(nombre)}" />`;
         }
         return `
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -5444,12 +5583,13 @@
       }
 
       function renderizarPanelQrPOS() {
-        const tieneQr = Boolean(estadoUI.qrCobroDataUrl);
+        const qrSeguro = obtenerUrlImagenSegura(estadoUI.qrCobroDataUrl);
+        estadoUI.qrCobroDataUrl = qrSeguro;
 
-        if (tieneQr) {
+        if (qrSeguro) {
           el.posQrPreviewContenedor.innerHTML = `
             <img
-              src="${estadoUI.qrCobroDataUrl}"
+              src="${escaparHTML(qrSeguro)}"
               alt="Código QR de cobro"
               class="pos-qr-img"
               title="Haz clic para ampliar el código QR"
@@ -5470,9 +5610,10 @@
       }
 
       function abrirModalQrCobro() {
-        if (!estadoUI.qrCobroDataUrl) return;
+        const qrSeguro = obtenerUrlImagenSegura(estadoUI.qrCobroDataUrl);
+        if (!qrSeguro) return;
         const total = obtenerTotalCarritoPOS();
-        el.modalQrImagen.src = estadoUI.qrCobroDataUrl;
+        el.modalQrImagen.src = qrSeguro;
         el.modalQrTotalTexto.textContent = `Total a cobrar: ${formatearMoneda(total)}`;
         el.modalQrCobro.classList.add("is-open");
       }
@@ -5894,50 +6035,82 @@
           el.estadoTexto.textContent = el.estadoProducto.checked ? "Activo" : "Inactivo";
         });
 
-        // Carga y compresión ligera de imagen para vista previa y guardado rápido
+        // Carga y compresión rápida de imagen para vista previa, Supabase y respaldo local
         el.imagenProducto.addEventListener("change", (e) => {
           const archivo = e.target.files && e.target.files[0];
           if (!archivo) return;
 
-          const lector = new FileReader();
-          lector.onload = (ev) => {
-            const img = new Image();
-            img.onload = () => {
-              const maxDim = 600;
-              let { width, height } = img;
-              if (width > maxDim || height > maxDim) {
-                if (width > height) {
-                  height = Math.round((height * maxDim) / width);
-                  width = maxDim;
-                } else {
-                  width = Math.round((width * maxDim) / height);
-                  height = maxDim;
-                }
+          el.imagenNombreArchivo.textContent = "Procesando imagen...";
+          const tarea = comprimirImagenArchivo(archivo, {
+            maxDim: 360,
+            mime: "image/jpeg",
+            calidad: 0.72,
+            maxBytesDataUrl: 120000,
+          })
+            .then((comprimida) => {
+              if (estadoUI.promesaImagen === tarea) {
+                renderizarImagenPreview(comprimida, archivo.name);
               }
-              const canvas = document.createElement("canvas");
-              canvas.width = width;
-              canvas.height = height;
-              const ctx = canvas.getContext("2d");
-              ctx.drawImage(img, 0, 0, width, height);
-              const comprimida = canvas.toDataURL("image/jpeg", 0.78);
-              renderizarImagenPreview(comprimida, archivo.name);
-            };
-            img.onerror = () => {
-              renderizarImagenPreview(ev.target.result, archivo.name);
-            };
-            img.src = ev.target.result;
-          };
-          lector.readAsDataURL(archivo);
+            })
+            .catch((err) => {
+              if (estadoUI.promesaImagen === tarea) {
+                renderizarImagenPreview("", "");
+                mostrarConfirmacion(
+                  (err && err.message) || "No se pudo cargar la imagen. Usa JPG, PNG o WEBP.",
+                  true
+                );
+              }
+            })
+            .finally(() => {
+              if (estadoUI.promesaImagen === tarea) {
+                estadoUI.promesaImagen = null;
+              }
+              e.target.value = "";
+            });
+
+          estadoUI.promesaImagen = tarea;
         });
 
         el.btnQuitarImagen.addEventListener("click", () => {
+          estadoUI.promesaImagen = null;
           renderizarImagenPreview("", "");
         });
+
+        // Respaldo limpio si alguna miniatura no pudiera decodificarse
+        document.addEventListener(
+          "error",
+          (e) => {
+            const img = e.target;
+            if (!(img instanceof HTMLImageElement)) return;
+            const contenedor = img.closest(
+              ".product-thumb, .pos-item-thumb, .pos-cart-thumb, .image-preview-box"
+            );
+            if (!contenedor) return;
+            contenedor.innerHTML = `
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+            `;
+          },
+          true
+        );
 
         // Envío del formulario (Crear o Actualizar producto en Supabase)
         el.formProducto.addEventListener("submit", async (e) => {
           e.preventDefault();
           if (!validarFormularioCompleto()) return;
+
+          if (estadoUI.promesaImagen) {
+            el.btnGuardarProducto.disabled = true;
+            el.btnGuardarProducto.textContent = "Procesando imagen...";
+            try {
+              await estadoUI.promesaImagen;
+            } catch (_err) {
+              // Ignorar: ya se informó en el lector de imagen
+            }
+          }
 
           const datosProducto = {
             codigoBarras: el.codigoBarras.value.trim(),
@@ -6131,51 +6304,37 @@
         });
 
         // Subir, previsualizar, ampliar y quitar imagen de código QR de cobro
-        el.posQrInput.addEventListener("change", (e) => {
+        el.posQrInput.addEventListener("change", async (e) => {
           const archivo = e.target.files && e.target.files[0];
           if (!archivo) return;
 
-          const lector = new FileReader();
-          lector.onload = (ev) => {
-            const resultado = ev.target && ev.target.result;
-            if (!resultado) return;
-
-            const img = new Image();
-            img.onload = () => {
-              const maxDim = 900;
-              let { width, height } = img;
-              let dataFinal = resultado;
-
-              if (width > maxDim || height > maxDim) {
-                if (width > height) {
-                  height = Math.round((height * maxDim) / width);
-                  width = maxDim;
-                } else {
-                  width = Math.round((width * maxDim) / height);
-                  height = maxDim;
-                }
-                const canvas = document.createElement("canvas");
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext("2d");
-                ctx.fillStyle = "#ffffff";
-                ctx.fillRect(0, 0, width, height);
-                ctx.drawImage(img, 0, 0, width, height);
-                dataFinal = canvas.toDataURL("image/png");
-              }
-
-              estadoUI.qrCobroDataUrl = dataFinal;
-              estadoUI.qrCobroNombre = archivo.name;
-              guardarQrCobroLocal(dataFinal, archivo.name);
-              renderizarPanelQrPOS();
+          try {
+            const dataFinal = await comprimirImagenArchivo(archivo, {
+              maxDim: 640,
+              mime: "image/png",
+              calidad: 0.9,
+              maxBytesDataUrl: 180000,
+            });
+            estadoUI.qrCobroDataUrl = dataFinal;
+            estadoUI.qrCobroNombre = archivo.name;
+            const guardadoOk = guardarQrCobroLocal(dataFinal, archivo.name);
+            renderizarPanelQrPOS();
+            if (!guardadoOk) {
+              mostrarMensajePOS(
+                "QR cargado en pantalla, pero el almacenamiento local del navegador está lleno.",
+                true
+              );
+            } else {
               mostrarMensajePOS("Código QR guardado correctamente para tus cobros.");
-            };
-            img.onerror = () => {
-              mostrarMensajePOS("No se pudo leer la imagen seleccionada.", true);
-            };
-            img.src = resultado;
-          };
-          lector.readAsDataURL(archivo);
+            }
+          } catch (err) {
+            mostrarMensajePOS(
+              (err && err.message) || "No se pudo leer la imagen seleccionada.",
+              true
+            );
+          } finally {
+            e.target.value = "";
+          }
         });
 
         el.posQrPreviewContenedor.addEventListener("click", (e) => {
@@ -6507,6 +6666,11 @@
           }
         });
         el.btnLinternaEscaner.addEventListener("click", alternarLinternaEscaner);
+        el.escanerVideo.addEventListener("click", () => {
+          if (estadoEscaner.activo) {
+            reenfocarCamaraEscaner();
+          }
+        });
 
         // Modal de acceso protegido con contraseña (solo para administración/productos, no Ventas)
         el.formAdminClave.addEventListener("submit", async (e) => {
@@ -6649,7 +6813,7 @@
          ======================================================================= */
       const estadoEscaner = {
         activo: false,
-        modo: "producto", // "producto" | "ventas"
+        modo: "producto", // "producto" | "ventas" | "inventario"
         stream: null,
         timerId: null,
         linternaEncendida: false,
@@ -6658,7 +6822,19 @@
         detectorNativo: null,
         lectorZXing: null,
         canvasCaptura: null,
+        ctxCaptura: null,
+        bufferGris: null,
+        indicePaso: 0,
       };
+
+      const PASOS_ESCANEO_COLOR = [
+        "normal",
+        "fondo_color",
+        "adaptativo",
+        "tinta_color",
+        "invertido",
+        "completo",
+      ];
 
       function reproducirBeepEscaner() {
         try {
@@ -6752,7 +6928,36 @@
 
         const ZXing = await cargarScriptZXing();
         if (!estadoEscaner.lectorZXing) {
-          estadoEscaner.lectorZXing = new ZXing.BrowserMultiFormatReader();
+          let hints;
+          try {
+            if (ZXing.DecodeHintType && ZXing.BarcodeFormat) {
+              hints = new Map();
+              const formatosZXing = [
+                ZXing.BarcodeFormat.EAN_13,
+                ZXing.BarcodeFormat.EAN_8,
+                ZXing.BarcodeFormat.UPC_A,
+                ZXing.BarcodeFormat.UPC_E,
+                ZXing.BarcodeFormat.CODE_128,
+                ZXing.BarcodeFormat.CODE_39,
+                ZXing.BarcodeFormat.CODE_93,
+                ZXing.BarcodeFormat.CODABAR,
+                ZXing.BarcodeFormat.ITF,
+                ZXing.BarcodeFormat.QR_CODE,
+              ].filter(Boolean);
+              if (formatosZXing.length > 0) {
+                hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formatosZXing);
+              }
+              hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+              if (ZXing.DecodeHintType.ALSO_INVERTED) {
+                hints.set(ZXing.DecodeHintType.ALSO_INVERTED, true);
+              }
+            }
+          } catch (_errHints) {
+            hints = undefined;
+          }
+          estadoEscaner.lectorZXing = hints
+            ? new ZXing.BrowserMultiFormatReader(hints)
+            : new ZXing.BrowserMultiFormatReader();
         }
         return "zxing";
       }
@@ -6886,32 +7091,180 @@
         mostrarFeedbackEscaner(`Agregado: ${prod.nombre} (${formatearMoneda(prod.precioVenta)})`);
       }
 
+      async function reenfocarCamaraEscaner() {
+        if (!estadoEscaner.stream) return;
+        const [videoTrack] = estadoEscaner.stream.getVideoTracks();
+        if (!videoTrack || typeof videoTrack.applyConstraints !== "function") return;
+        try {
+          await videoTrack.applyConstraints({
+            advanced: [{ focusMode: "single-shot" }],
+          });
+          setTimeout(() => {
+            if (!estadoEscaner.activo || !estadoEscaner.stream) return;
+            videoTrack
+              .applyConstraints({ advanced: [{ focusMode: "continuous" }] })
+              .catch(() => {});
+          }, 350);
+        } catch (_err) {
+          // Algunos dispositivos no exponen control manual de enfoque
+        }
+      }
+
+      function aplicarFiltroContrasteCanvas(ctx, ancho, alto, modoPaso) {
+        const imgData = ctx.getImageData(0, 0, ancho, alto);
+        const d = imgData.data;
+        const totalPix = ancho * alto;
+        if (!estadoEscaner.bufferGris || estadoEscaner.bufferGris.length !== totalPix) {
+          estadoEscaner.bufferGris = new Uint8Array(totalPix);
+        }
+        const gris = estadoEscaner.bufferGris;
+
+        let minV = 255;
+        let maxV = 0;
+
+        if (modoPaso === "tinta_color") {
+          for (let p = 0, i = 0; p < totalPix; p++, i += 4) {
+            const r = d[i];
+            const g = d[i + 1];
+            const b = d[i + 2];
+            const v = r < g ? (r < b ? r : b) : (g < b ? g : b);
+            gris[p] = v;
+            if (v < minV) minV = v;
+            if (v > maxV) maxV = v;
+          }
+        } else if (modoPaso === "invertido") {
+          for (let p = 0, i = 0; p < totalPix; p++, i += 4) {
+            const r = d[i];
+            const g = d[i + 1];
+            const b = d[i + 2];
+            const mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
+            const v = 255 - mx;
+            gris[p] = v;
+            if (v < minV) minV = v;
+            if (v > maxV) maxV = v;
+          }
+        } else {
+          // "fondo_color" y "adaptativo": max(R, G, B) vuelve claro cualquier fondo rojo, azul, verde o amarillo
+          for (let p = 0, i = 0; p < totalPix; p++, i += 4) {
+            const r = d[i];
+            const g = d[i + 1];
+            const b = d[i + 2];
+            const v = r > g ? (r > b ? r : b) : (g > b ? g : b);
+            gris[p] = v;
+            if (v < minV) minV = v;
+            if (v > maxV) maxV = v;
+          }
+        }
+
+        if (modoPaso === "adaptativo") {
+          const radio = 22;
+          for (let y = 0; y < alto; y++) {
+            const base = y * ancho;
+            let suma = 0;
+            const limiteInicial = Math.min(ancho - 1, radio);
+            for (let x = 0; x <= limiteInicial; x++) {
+              suma += gris[base + x];
+            }
+            for (let x = 0; x < ancho; x++) {
+              const izq = x - radio;
+              const der = x + radio;
+              if (izq > 0) suma -= gris[base + izq - 1];
+              if (x > 0 && der < ancho) suma += gris[base + der];
+              const inicio = izq < 0 ? 0 : izq;
+              const fin = der >= ancho ? ancho - 1 : der;
+              const conteo = fin - inicio + 1;
+              const out = gris[base + x] * conteo < suma - conteo * 6 ? 0 : 255;
+              const p4 = (base + x) * 4;
+              d[p4] = out;
+              d[p4 + 1] = out;
+              d[p4 + 2] = out;
+              d[p4 + 3] = 255;
+            }
+          }
+        } else {
+          const rango = Math.max(12, maxV - minV);
+          const escala = 255 / rango;
+          for (let p = 0, i = 0; p < totalPix; p++, i += 4) {
+            let norm = (gris[p] - minV) * escala;
+            if (norm < 0) norm = 0;
+            else if (norm > 255) norm = 255;
+            d[i] = norm;
+            d[i + 1] = norm;
+            d[i + 2] = norm;
+            d[i + 3] = 255;
+          }
+        }
+
+        ctx.putImageData(imgData, 0, 0);
+      }
+
+      function prepararCanvasEscaneo(modoPaso) {
+        const vw = el.escanerVideo.videoWidth;
+        const vh = el.escanerVideo.videoHeight;
+        if (!vw || !vh) return null;
+
+        if (!estadoEscaner.canvasCaptura) {
+          estadoEscaner.canvasCaptura = document.createElement("canvas");
+          estadoEscaner.ctxCaptura = estadoEscaner.canvasCaptura.getContext("2d", {
+            willReadFrequently: true,
+          });
+        }
+        const canvas = estadoEscaner.canvasCaptura;
+        const ctx = estadoEscaner.ctxCaptura;
+
+        const esCompleto = modoPaso === "completo";
+        const sx = esCompleto ? 0 : Math.round(vw * 0.1);
+        const sy = esCompleto ? 0 : Math.round(vh * 0.16);
+        const sw = esCompleto ? vw : Math.max(160, Math.round(vw * 0.8));
+        const sh = esCompleto ? vh : Math.max(120, Math.round(vh * 0.68));
+
+        const maxAncho = esCompleto ? 720 : 640;
+        const escala = sw > maxAncho ? maxAncho / sw : 1;
+        const cw = Math.max(120, Math.round(sw * escala));
+        const ch = Math.max(90, Math.round(sh * escala));
+
+        if (canvas.width !== cw || canvas.height !== ch) {
+          canvas.width = cw;
+          canvas.height = ch;
+        }
+
+        ctx.drawImage(el.escanerVideo, sx, sy, sw, sh, 0, 0, cw, ch);
+
+        if (modoPaso !== "normal" && modoPaso !== "completo") {
+          aplicarFiltroContrasteCanvas(ctx, cw, ch, modoPaso);
+        }
+
+        return canvas;
+      }
+
       async function cicloDeteccionEscaner(motor) {
         if (!estadoEscaner.activo) return;
 
         try {
           if (el.escanerVideo.readyState >= 2 && el.escanerVideo.videoWidth > 0) {
+            const modoPaso = PASOS_ESCANEO_COLOR[estadoEscaner.indicePaso % PASOS_ESCANEO_COLOR.length];
+            estadoEscaner.indicePaso = (estadoEscaner.indicePaso + 1) % PASOS_ESCANEO_COLOR.length;
+
             if (motor === "nativo" && estadoEscaner.detectorNativo) {
-              const codigos = await estadoEscaner.detectorNativo.detect(el.escanerVideo);
-              if (codigos && codigos.length > 0 && codigos[0].rawValue) {
-                procesarCodigoEscaneado(codigos[0].rawValue);
+              const fuente =
+                modoPaso === "completo" ? el.escanerVideo : prepararCanvasEscaneo(modoPaso);
+              if (fuente) {
+                const codigos = await estadoEscaner.detectorNativo.detect(fuente);
+                if (codigos && codigos.length > 0 && codigos[0].rawValue) {
+                  procesarCodigoEscaneado(codigos[0].rawValue);
+                }
               }
             } else if (motor === "zxing" && estadoEscaner.lectorZXing) {
-              if (!estadoEscaner.canvasCaptura) {
-                estadoEscaner.canvasCaptura = document.createElement("canvas");
-              }
-              const canvas = estadoEscaner.canvasCaptura;
-              canvas.width = el.escanerVideo.videoWidth;
-              canvas.height = el.escanerVideo.videoHeight;
-              const ctx = canvas.getContext("2d", { willReadFrequently: true });
-              ctx.drawImage(el.escanerVideo, 0, 0, canvas.width, canvas.height);
-              try {
-                const resultado = estadoEscaner.lectorZXing.decodeFromCanvas(canvas);
-                if (resultado && typeof resultado.getText === "function") {
-                  procesarCodigoEscaneado(resultado.getText());
+              const canvas = prepararCanvasEscaneo(modoPaso);
+              if (canvas) {
+                try {
+                  const resultado = estadoEscaner.lectorZXing.decodeFromCanvas(canvas);
+                  if (resultado && typeof resultado.getText === "function") {
+                    procesarCodigoEscaneado(resultado.getText());
+                  }
+                } catch (_notFound) {
+                  // Sin código en este cuadro
                 }
-              } catch (_notFound) {
-                // Sin código en este cuadro
               }
             }
           }
@@ -6920,12 +7273,13 @@
         }
 
         if (estadoEscaner.activo) {
-          estadoEscaner.timerId = setTimeout(() => cicloDeteccionEscaner(motor), 140);
+          estadoEscaner.timerId = setTimeout(() => cicloDeteccionEscaner(motor), 45);
         }
       }
 
       async function iniciarFlujoCamara(deviceId = "") {
         detenerFlujoCamara();
+        estadoEscaner.indicePaso = 0;
         el.escanerEstado.textContent = "Solicitando acceso a la cámara...";
 
         if (!window.isSecureContext) {
@@ -6964,6 +7318,18 @@
           const settings = track && typeof track.getSettings === "function" ? track.getSettings() : {};
           await actualizarListaCamaras(settings.deviceId || deviceId);
 
+          if (track && typeof track.applyConstraints === "function") {
+            track
+              .applyConstraints({
+                advanced: [
+                  { focusMode: "continuous" },
+                  { exposureMode: "continuous" },
+                  { whiteBalanceMode: "continuous" },
+                ],
+              })
+              .catch(() => {});
+          }
+
           if (track && typeof track.getCapabilities === "function") {
             const caps = track.getCapabilities();
             if (caps && caps.torch) {
@@ -6977,8 +7343,8 @@
 
           el.escanerEstado.textContent =
             estadoEscaner.modo === "ventas"
-              ? "Cámara activa — escanea productos continuamente para agregar al carrito."
-              : "Cámara activa — apunta al código de barras del producto.";
+              ? "Cámara activa — optimizado para fondos de colores y reflejos. Toca el video para enfocar."
+              : "Cámara activa — apunta al código de barras (optimizado para cualquier color de envase).";
           cicloDeteccionEscaner(motor);
         } catch (err) {
           let msg = "No se pudo iniciar la cámara.";

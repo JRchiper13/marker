@@ -6819,6 +6819,9 @@
         linternaEncendida: false,
         ultimoCodigo: "",
         ultimoTimestamp: 0,
+        candidatoCodigo: "",
+        candidatoConteo: 0,
+        candidatoTimestamp: 0,
         detectorNativo: null,
         lectorZXing: null,
         canvasCaptura: null,
@@ -6830,6 +6833,7 @@
       const PASOS_ESCANEO_COLOR = [
         "normal",
         "fondo_color",
+        "normal",
         "adaptativo",
         "tinta_color",
         "invertido",
@@ -6904,8 +6908,6 @@
           "code_128",
           "code_39",
           "code_93",
-          "codabar",
-          "itf",
           "qr_code",
         ];
 
@@ -6940,8 +6942,6 @@
                 ZXing.BarcodeFormat.CODE_128,
                 ZXing.BarcodeFormat.CODE_39,
                 ZXing.BarcodeFormat.CODE_93,
-                ZXing.BarcodeFormat.CODABAR,
-                ZXing.BarcodeFormat.ITF,
                 ZXing.BarcodeFormat.QR_CODE,
               ].filter(Boolean);
               if (formatosZXing.length > 0) {
@@ -6972,6 +6972,9 @@
         }
         el.escanerVideo.srcObject = null;
         estadoEscaner.linternaEncendida = false;
+        estadoEscaner.candidatoCodigo = "";
+        estadoEscaner.candidatoConteo = 0;
+        estadoEscaner.candidatoTimestamp = 0;
         el.btnLinternaEscaner.style.display = "none";
         el.btnLinternaEscaner.textContent = "Linterna";
       }
@@ -7021,6 +7024,66 @@
         } catch (_err) {
           el.escanerSelectCamara.style.display = "none";
         }
+      }
+
+      function validarDigitoControlGS1(digitos) {
+        if (!/^\d+$/.test(digitos)) return false;
+        const cuerpo = digitos.slice(0, -1);
+        const verificador = Number(digitos[digitos.length - 1]);
+        let suma = 0;
+        for (let i = cuerpo.length - 1, pos = 0; i >= 0; i--, pos++) {
+          const d = Number(cuerpo[i]);
+          suma += pos % 2 === 0 ? d * 3 : d;
+        }
+        const esperado = (10 - (suma % 10)) % 10;
+        return esperado === verificador;
+      }
+
+      function esLecturaEscanerValida(codigo, formatoBruto = "") {
+        if (!codigo || codigo.length < 4) return false;
+        const fmt = String(formatoBruto || "").toLowerCase();
+
+        if (fmt === "ean_13" || fmt === "ean13") {
+          return codigo.length === 13 && validarDigitoControlGS1(codigo);
+        }
+        if (fmt === "ean_8" || fmt === "ean8") {
+          return codigo.length === 8 && validarDigitoControlGS1(codigo);
+        }
+        if (fmt === "upc_a" || fmt === "upca") {
+          return codigo.length === 12 && validarDigitoControlGS1(codigo);
+        }
+        return true;
+      }
+
+      function registrarLecturaEscanerConConsenso(codigoBruto, formatoBruto = "") {
+        const codigo = String(codigoBruto || "").trim();
+        if (!esLecturaEscanerValida(codigo, formatoBruto)) return;
+
+        const ahora = Date.now();
+        if (codigo === estadoEscaner.ultimoCodigo && ahora - estadoEscaner.ultimoTimestamp < 1600) {
+          return;
+        }
+
+        if (
+          codigo === estadoEscaner.candidatoCodigo &&
+          ahora - estadoEscaner.candidatoTimestamp <= 750
+        ) {
+          estadoEscaner.candidatoConteo += 1;
+        } else {
+          estadoEscaner.candidatoCodigo = codigo;
+          estadoEscaner.candidatoConteo = 1;
+        }
+        estadoEscaner.candidatoTimestamp = ahora;
+
+        // Exigir 2 cuadros idénticos confirmados para evitar lecturas falsas o dígitos erróneos
+        if (estadoEscaner.candidatoConteo < 2) {
+          return;
+        }
+
+        estadoEscaner.candidatoCodigo = "";
+        estadoEscaner.candidatoConteo = 0;
+        estadoEscaner.candidatoTimestamp = 0;
+        procesarCodigoEscaneado(codigo);
       }
 
       function procesarCodigoEscaneado(codigoBruto) {
@@ -7144,7 +7207,7 @@
             if (v > maxV) maxV = v;
           }
         } else {
-          // "fondo_color" y "adaptativo": max(R, G, B) vuelve claro cualquier fondo rojo, azul, verde o amarillo
+          // "fondo_color" y "adaptativo": max(R, G, B) aclara fondos rojos, azules, verdes o amarillos
           for (let p = 0, i = 0; p < totalPix; p++, i += 4) {
             const r = d[i];
             const g = d[i + 1];
@@ -7157,7 +7220,8 @@
         }
 
         if (modoPaso === "adaptativo") {
-          const radio = 22;
+          // Realce local suave en escala de grises: conserva el ancho exacto de cada barra sin deformar dígitos
+          const radio = 26;
           for (let y = 0; y < alto; y++) {
             const base = y * ancho;
             let suma = 0;
@@ -7173,7 +7237,10 @@
               const inicio = izq < 0 ? 0 : izq;
               const fin = der >= ancho ? ancho - 1 : der;
               const conteo = fin - inicio + 1;
-              const out = gris[base + x] * conteo < suma - conteo * 6 ? 0 : 255;
+              const mediaLocal = suma / conteo;
+              let out = Math.round(150 + (gris[base + x] - mediaLocal) * 2.5);
+              if (out < 0) out = 0;
+              else if (out > 255) out = 255;
               const p4 = (base + x) * 4;
               d[p4] = out;
               d[p4 + 1] = out;
@@ -7213,15 +7280,15 @@
         const ctx = estadoEscaner.ctxCaptura;
 
         const esCompleto = modoPaso === "completo";
-        const sx = esCompleto ? 0 : Math.round(vw * 0.1);
-        const sy = esCompleto ? 0 : Math.round(vh * 0.16);
-        const sw = esCompleto ? vw : Math.max(160, Math.round(vw * 0.8));
-        const sh = esCompleto ? vh : Math.max(120, Math.round(vh * 0.68));
+        const sx = esCompleto ? 0 : Math.round(vw * 0.08);
+        const sy = esCompleto ? 0 : Math.round(vh * 0.14);
+        const sw = esCompleto ? vw : Math.max(200, Math.round(vw * 0.84));
+        const sh = esCompleto ? vh : Math.max(140, Math.round(vh * 0.72));
 
-        const maxAncho = esCompleto ? 720 : 640;
+        const maxAncho = esCompleto ? 960 : 840;
         const escala = sw > maxAncho ? maxAncho / sw : 1;
-        const cw = Math.max(120, Math.round(sw * escala));
-        const ch = Math.max(90, Math.round(sh * escala));
+        const cw = Math.max(160, Math.round(sw * escala));
+        const ch = Math.max(110, Math.round(sh * escala));
 
         if (canvas.width !== cw || canvas.height !== ch) {
           canvas.width = cw;
@@ -7235,6 +7302,20 @@
         }
 
         return canvas;
+      }
+
+      function obtenerNombreFormatoZXing(resultado) {
+        if (!resultado || typeof resultado.getBarcodeFormat !== "function") return "";
+        const fmt = resultado.getBarcodeFormat();
+        if (!window.ZXingBrowser || !window.ZXingBrowser.BarcodeFormat) {
+          return String(fmt || "");
+        }
+        const BF = window.ZXingBrowser.BarcodeFormat;
+        if (fmt === BF.EAN_13) return "ean_13";
+        if (fmt === BF.EAN_8) return "ean_8";
+        if (fmt === BF.UPC_A) return "upc_a";
+        if (fmt === BF.UPC_E) return "upc_e";
+        return String(fmt || "");
       }
 
       async function cicloDeteccionEscaner(motor) {
@@ -7251,7 +7332,7 @@
               if (fuente) {
                 const codigos = await estadoEscaner.detectorNativo.detect(fuente);
                 if (codigos && codigos.length > 0 && codigos[0].rawValue) {
-                  procesarCodigoEscaneado(codigos[0].rawValue);
+                  registrarLecturaEscanerConConsenso(codigos[0].rawValue, codigos[0].format);
                 }
               }
             } else if (motor === "zxing" && estadoEscaner.lectorZXing) {
@@ -7260,7 +7341,10 @@
                 try {
                   const resultado = estadoEscaner.lectorZXing.decodeFromCanvas(canvas);
                   if (resultado && typeof resultado.getText === "function") {
-                    procesarCodigoEscaneado(resultado.getText());
+                    registrarLecturaEscanerConConsenso(
+                      resultado.getText(),
+                      obtenerNombreFormatoZXing(resultado)
+                    );
                   }
                 } catch (_notFound) {
                   // Sin código en este cuadro
@@ -7343,8 +7427,8 @@
 
           el.escanerEstado.textContent =
             estadoEscaner.modo === "ventas"
-              ? "Cámara activa — optimizado para fondos de colores y reflejos. Toca el video para enfocar."
-              : "Cámara activa — apunta al código de barras (optimizado para cualquier color de envase).";
+              ? "Cámara activa — escaneo verificado (toca el video si necesitas reenfocar)."
+              : "Cámara activa — apunta al código de barras para lectura verificada.";
           cicloDeteccionEscaner(motor);
         } catch (err) {
           let msg = "No se pudo iniciar la cámara.";
@@ -7365,6 +7449,9 @@
         estadoEscaner.modo = modo;
         estadoEscaner.ultimoCodigo = "";
         estadoEscaner.ultimoTimestamp = 0;
+        estadoEscaner.candidatoCodigo = "";
+        estadoEscaner.candidatoConteo = 0;
+        estadoEscaner.candidatoTimestamp = 0;
 
         el.escanerFeedback.classList.remove("is-visible", "is-error");
         el.escanerFeedback.textContent = "";
